@@ -35,6 +35,7 @@ import {
   Square,
   FileCheck,
   CarFront,
+  AlertTriangle,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -53,6 +54,8 @@ import {
   type RepairOrderStatus,
   type LoanerVehicle,
   type LoanerAssignment,
+  type CannedTask,
+  type DevisItem,
 } from '@/lib/types/database';
 import { SignaturePad } from '@/components/signature-pad';
 
@@ -72,6 +75,7 @@ export default function RepairOrdersPage() {
   const [createDialog, setCreateDialog] = useState(false);
   const [selectedDevisId, setSelectedDevisId] = useState('');
   const [selectedMechanicId, setSelectedMechanicId] = useState('');
+  const [workspaceName, setWorkspaceName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [convertDialog, setConvertDialog] = useState<RepairOrder | null>(null);
   const [detailsDialog, setDetailsDialog] = useState<RepairOrder | null>(null);
@@ -81,21 +85,26 @@ export default function RepairOrdersPage() {
   const [selectedLoanerId, setSelectedLoanerId] = useState('');
   const [loanerStartDate, setLoanerStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [loanerEndDate, setLoanerEndDate] = useState(new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0]);
+  const [cannedTasks, setCannedTasks] = useState<CannedTask[]>([]);
+  const [extraItems, setExtraItems] = useState<{ description: string; quantity: number; unit_price: number }[]>([]);
+  const [devisItems, setDevisItems] = useState<DevisItem[]>([]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const [orRes, devisRes, mechRes, lvRes, laRes] = await Promise.all([
+    const [orRes, devisRes, mechRes, lvRes, laRes, tasksRes] = await Promise.all([
       supabase.from('repair_orders').select('*, client:clients(*), vehicle:vehicles(*), assigned_mechanic:profiles!assigned_mechanic_id(*), repair_order_items(*), service_request:service_requests(*)').order('created_at', { ascending: false }),
       supabase.from('service_requests').select('*, client:clients(*), vehicle:vehicles(*), devis_items(*)').eq('status', 'devis_accepte').order('created_at', { ascending: false }),
       supabase.from('profiles').select('*').in('role', ['admin', 'mecanicien']).eq('active', true),
       supabase.from('loaner_vehicles').select('*').eq('status', 'available').order('make'),
       supabase.from('loaner_assignments').select('*, loaner_vehicle:loaner_vehicles(*), client:clients(*)').eq('status', 'active'),
+      supabase.from('canned_tasks').select('*').order('name', { ascending: true }),
     ]);
     setOrders(orRes.data as any ?? []);
     setAcceptedDevis(devisRes.data as any ?? []);
     setMechanics(mechRes.data as Profile[] ?? []);
     setLoanerVehicles(lvRes.data as LoanerVehicle[] ?? []);
     setLoanerAssignments(laRes.data as LoanerAssignment[] ?? []);
+    setCannedTasks(tasksRes.data as CannedTask[] ?? []);
     setLoading(false);
   }, []);
 
@@ -124,6 +133,7 @@ export default function RepairOrdersPage() {
       client_id: devis.client_id,
       vehicle_id: devis.vehicle_id,
       assigned_mechanic_id: selectedMechanicId || null,
+      workspace_name: workspaceName.trim() || null,
       status: 'en_cours',
       garage_id: profile?.garage_id ?? null,
       created_by: profile?.id ?? null,
@@ -152,10 +162,28 @@ export default function RepairOrdersPage() {
       }
     }
 
+    if (extraItems.length > 0) {
+      const extraPayload = extraItems.map((it) => ({
+        repair_order_id: newOR.id,
+        description: it.description,
+        quantity: it.quantity,
+        unit_price: it.unit_price,
+        line_total: it.quantity * it.unit_price,
+      }));
+      const { error: extraError } = await supabase.from('repair_order_items').insert(extraPayload);
+      if (extraError) {
+        toast.error(t('toast.error'), { description: extraError.message });
+        setSubmitting(false);
+        return;
+      }
+    }
+
     toast.success(t('or.created'), { description: t('or.createdDesc') });
     setCreateDialog(false);
     setSelectedDevisId('');
     setSelectedMechanicId('');
+    setWorkspaceName('');
+    setExtraItems([]);
     fetchData();
     setSubmitting(false);
   }
@@ -250,6 +278,18 @@ export default function RepairOrdersPage() {
     }
   }
 
+  function openDetailsDialog(order: RepairOrder) {
+    setDetailsDialog(order);
+    setSelectedLoanerId('');
+    if (order.service_request_id) {
+      supabase.from('devis_items').select('*').eq('devis_id', order.service_request_id).then(({ data }) => {
+        setDevisItems(data as DevisItem[] ?? []);
+      });
+    } else {
+      setDevisItems([]);
+    }
+  }
+
   const activeOrders = orders.filter((o) => o.status === 'en_cours');
   const completedOrders = orders.filter((o) => o.status === 'termine');
   const invoicedOrders = orders.filter((o) => o.status === 'facture');
@@ -296,6 +336,12 @@ export default function RepairOrdersPage() {
                     <span className="flex items-center gap-1">
                       <Wrench className="h-3 w-3" />
                       {order.assigned_mechanic.full_name}
+                    </span>
+                  )}
+                  {order.workspace_name && (
+                    <span className="flex items-center gap-1">
+                      <CarFront className="h-3 w-3" />
+                      {order.workspace_name}
                     </span>
                   )}
                 </div>
@@ -346,7 +392,7 @@ export default function RepairOrdersPage() {
                 {t('or.convertToInvoice')}
               </Button>
             )}
-            <Button size="sm" variant="ghost" onClick={() => { setDetailsDialog(order); setSelectedLoanerId(''); }}>
+            <Button size="sm" variant="ghost" onClick={() => openDetailsDialog(order)}>
               {t('or.viewDetails')}
             </Button>
           </div>
@@ -477,6 +523,50 @@ export default function RepairOrdersPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{t('or.workspace')}</label>
+              <Input
+                value={workspaceName}
+                onChange={(e) => setWorkspaceName(e.target.value)}
+                placeholder={t('or.workspacePlaceholder')}
+              />
+            </div>
+            {cannedTasks.length > 0 && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">{t('cannedTasks.pickTask')}</label>
+                <Select onValueChange={(taskId) => {
+                  const task = cannedTasks.find((t2) => t2.id === taskId);
+                  if (task) {
+                    setExtraItems([...extraItems, {
+                      description: task.description || task.name,
+                      quantity: 1,
+                      unit_price: task.default_price ?? 0,
+                    }]);
+                  }
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('cannedTasks.pickPlaceholder')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cannedTasks.map((task) => (
+                      <SelectItem key={task.id} value={task.id}>
+                        {task.name}{task.default_price != null ? ` — ${formatCHF(task.default_price)}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {extraItems.length > 0 && (
+                  <div className="space-y-1">
+                    {extraItems.map((it, i) => (
+                      <div key={i} className="flex items-center justify-between text-sm rounded-lg border border-border/40 px-2 py-1.5">
+                        <span>{it.description} ×{it.quantity}</span>
+                        <span className="font-medium">{formatCHF(it.quantity * it.unit_price)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateDialog(false)}>{t('common.cancel')}</Button>
@@ -573,6 +663,10 @@ export default function RepairOrdersPage() {
                     <p className="font-medium">{detailsDialog.assigned_mechanic?.full_name ?? t('or.noMechanic')}</p>
                   </div>
                   <div>
+                    <p className="text-muted-foreground">{t('or.workspace')}</p>
+                    <p className="font-medium">{detailsDialog.workspace_name ?? '—'}</p>
+                  </div>
+                  <div>
                     <p className="text-muted-foreground">{t('or.status')}</p>
                     <Badge variant="secondary">{t(`or.${detailsDialog.status === 'en_cours' ? 'active' : detailsDialog.status === 'termine' ? 'completed' : 'invoiced'}`)}</Badge>
                   </div>
@@ -605,6 +699,43 @@ export default function RepairOrdersPage() {
                     <p className="text-sm text-muted-foreground">{t('or.noItems')}</p>
                   )}
                 </div>
+
+                {detailsDialog.service_request_id && (() => {
+                  const roSubtotal = (detailsDialog.repair_order_items ?? []).reduce((s, it) => s + it.line_total, 0);
+                  const devisSubtotal = devisItems.reduce((s, it) => s + it.line_total, 0);
+                  const diff = roSubtotal - devisSubtotal;
+                  const overPct = devisSubtotal > 0 ? (diff / devisSubtotal) * 100 : 0;
+                  const isOverrun = diff > 0.01;
+                  const isWarning = overPct > 10;
+                  if (devisItems.length === 0) return null;
+                  return (
+                    <div className="rounded-lg border border-border/60 p-3 space-y-2">
+                      <p className="text-sm font-semibold flex items-center gap-1.5">
+                        {isWarning && <AlertTriangle className="h-4 w-4 text-warning" />}
+                        {t('or.comparison.title')}
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="rounded-lg bg-secondary/40 p-2.5">
+                          <p className="text-xs text-muted-foreground">{t('or.comparison.devisTotal')}</p>
+                          <p className="text-sm font-bold">{formatCHF(devisSubtotal)}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{devisItems.length} {t('or.comparison.items')}</p>
+                        </div>
+                        <div className={`rounded-lg p-2.5 ${isWarning ? 'bg-warning/10' : 'bg-secondary/40'}`}>
+                          <p className="text-xs text-muted-foreground">{t('or.comparison.finalTotal')}</p>
+                          <p className={`text-sm font-bold ${isWarning ? 'text-warning' : ''}`}>{formatCHF(roSubtotal)}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{(detailsDialog.repair_order_items ?? []).length} {t('or.comparison.items')}</p>
+                        </div>
+                      </div>
+                      <div className={`flex items-center justify-between rounded-lg p-2.5 text-sm ${isWarning ? 'bg-warning/10 text-warning' : isOverrun ? 'bg-secondary/40' : 'bg-success/10 text-success'}`}>
+                        <span className="font-medium">{t('or.comparison.difference')}</span>
+                        <span className="font-bold">{diff > 0 ? '+' : ''}{formatCHF(diff)}</span>
+                      </div>
+                      {isWarning && (
+                        <p className="text-xs text-warning">{t('or.comparison.overrunWarning', { pct: Math.round(overPct) })}</p>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {detailsDialog.notes && (
                   <div>

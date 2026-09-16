@@ -27,6 +27,7 @@ import {
   CalendarDays,
   CarFront,
   Hammer,
+  ListChecks,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -41,6 +42,7 @@ const navItems = [
   { labelKey: 'sidebar.garage.stock', href: '/stock', icon: Package, roles: ['admin', 'mecanicien'] },
   { labelKey: 'sidebar.garage.orders', href: '/commandes-pieces', icon: ShoppingCart, roles: ['admin', 'mecanicien'] },
   { labelKey: 'sidebar.garage.loaners', href: '/vehicules-courtoisie', icon: CarFront, roles: ['admin', 'mecanicien'] },
+  { labelKey: 'sidebar.garage.cannedTasks', href: '/taches-types', icon: ListChecks, roles: ['admin', 'mecanicien'] },
   { labelKey: 'sidebar.garage.profile', href: '/mon-garage', icon: Store, roles: ['admin', 'mecanicien'] },
   { labelKey: 'sidebar.garage.team', href: '/equipe', icon: UserCircle, roles: ['admin'] },
   { labelKey: 'sidebar.garage.payments', href: '/paiements', icon: CreditCard, roles: ['admin'] },

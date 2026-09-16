@@ -30,6 +30,7 @@ import {
   Loader2,
   User,
   Car,
+  CarFront,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
@@ -55,12 +56,14 @@ interface PlanningItem {
   time: string;
   mechanic_id: string | null;
   mechanic_name: string | null;
+  workspace_name: string | null;
   raw: any;
 }
 
 export default function PlanningPage() {
   const { t } = useI18n();
   const [view, setView] = useState<'day' | 'week'>('day');
+  const [groupBy, setGroupBy] = useState<'mechanic' | 'workspace'>('mechanic');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [mechanics, setMechanics] = useState<Profile[]>([]);
   const [appointments, setAppointments] = useState<(Appointment & { client?: Client; vehicle?: Vehicle })[]>([]);
@@ -105,6 +108,7 @@ export default function PlanningPage() {
           time,
           mechanic_id: a.assigned_to,
           mechanic_name: mech?.full_name ?? null,
+          workspace_name: null,
           raw: a,
         });
       }
@@ -124,12 +128,28 @@ export default function PlanningPage() {
         time,
         mechanic_id: o.assigned_mechanic_id,
         mechanic_name: o.assigned_mechanic?.full_name ?? null,
+        workspace_name: o.workspace_name,
         raw: o,
       });
     });
 
     return items;
   }, [appointments, orders, mechanics]);
+
+  const workspaces = useMemo(() => {
+    const names = new Set<string>();
+    orders.forEach((o) => { if (o.workspace_name) names.add(o.workspace_name); });
+    return Array.from(names).sort();
+  }, [orders]);
+
+  const groupByColumns = groupBy === 'mechanic'
+    ? mechanics.map((m) => ({ id: m.id, label: m.full_name, sublabel: t(`role.${m.role}`), icon: Wrench }))
+    : workspaces.map((w) => ({ id: w, label: w, sublabel: null, icon: CarFront }));
+
+  function getItemColumnId(item: PlanningItem): string | null {
+    if (groupBy === 'mechanic') return item.mechanic_id;
+    return item.workspace_name;
+  }
 
   const dateStr = useMemo(() => {
     const y = currentDate.getFullYear();
@@ -248,6 +268,16 @@ export default function PlanningPage() {
             {t('planning.week')}
           </Button>
         </div>
+        <div className="flex items-center gap-1">
+          <Button variant={groupBy === 'mechanic' ? 'default' : 'outline'} size="sm" onClick={() => setGroupBy('mechanic')}>
+            <Wrench className="h-3.5 w-3.5 mr-1" />
+            {t('planning.byMechanic')}
+          </Button>
+          <Button variant={groupBy === 'workspace' ? 'default' : 'outline'} size="sm" onClick={() => setGroupBy('workspace')}>
+            <CarFront className="h-3.5 w-3.5 mr-1" />
+            {t('planning.byWorkspace')}
+          </Button>
+        </div>
         <p className="text-sm font-medium text-muted-foreground">
           {view === 'day'
             ? currentDate.toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
@@ -255,28 +285,28 @@ export default function PlanningPage() {
         </p>
       </div>
 
-      {mechanics.length === 0 ? (
+      {groupByColumns.length === 0 ? (
         <Card className="border-border/60">
           <CardContent className="p-8 text-center text-muted-foreground">
-            {t('planning.noMechanic')}
+            {groupBy === 'mechanic' ? t('planning.noMechanic') : t('planning.noWorkspace')}
           </CardContent>
         </Card>
       ) : view === 'day' ? (
-        /* Day view: columns per mechanic */
+        /* Day view: columns per group */
         <div className="overflow-x-auto">
           <div className="min-w-max space-y-2">
             {/* Header row */}
             <div className="flex gap-3">
               <div className="w-20 shrink-0" />
-              {mechanics.map((m) => (
-                <div key={m.id} className="w-64 shrink-0">
+              {groupByColumns.map((col) => (
+                <div key={col.id} className="w-64 shrink-0">
                   <div className="flex items-center gap-2 p-2 rounded-lg bg-secondary/50">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-                      <Wrench className="h-4 w-4 text-primary" />
+                      <col.icon className="h-4 w-4 text-primary" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{m.full_name}</p>
-                      <p className="text-xs text-muted-foreground">{t(`role.${m.role}`)}</p>
+                      <p className="text-sm font-medium truncate">{col.label}</p>
+                      {col.sublabel && <p className="text-xs text-muted-foreground">{col.sublabel}</p>}
                     </div>
                   </div>
                 </div>
@@ -289,12 +319,12 @@ export default function PlanningPage() {
                   <div className="w-20 shrink-0 flex items-center justify-end pr-2">
                     <span className="text-xs text-muted-foreground font-medium">{slot}</span>
                   </div>
-                  {mechanics.map((m) => {
+                  {groupByColumns.map((col) => {
                     const items = planningItems.filter(
-                      (it) => it.mechanic_id === m.id && it.date === dateStr && it.time === slot
+                      (it) => getItemColumnId(it) === col.id && it.date === dateStr && it.time === slot
                     );
                     return (
-                      <div key={m.id} className="w-64 shrink-0 min-h-[3rem] rounded-lg border border-border/20 bg-secondary/20 p-1.5 space-y-1.5">
+                      <div key={col.id} className="w-64 shrink-0 min-h-[3rem] rounded-lg border border-border/20 bg-secondary/20 p-1.5 space-y-1.5">
                         {items.map((it) => <ItemCard key={it.id} item={it} />)}
                       </div>
                     );
@@ -305,7 +335,7 @@ export default function PlanningPage() {
           </div>
         </div>
       ) : (
-        /* Week view: rows per mechanic, columns per day */
+        /* Week view: rows per group, columns per day */
         <div className="overflow-x-auto">
           <div className="min-w-max">
             {/* Header row */}
@@ -320,18 +350,18 @@ export default function PlanningPage() {
                 </div>
               ))}
             </div>
-            {/* Mechanic rows */}
-            {mechanics.map((m) => (
-              <div key={m.id} className="flex gap-2 mb-2">
+            {/* Group rows */}
+            {groupByColumns.map((col) => (
+              <div key={col.id} className="flex gap-2 mb-2">
                 <div className="w-40 shrink-0 flex items-center gap-2 p-2">
                   <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
-                    <Wrench className="h-3.5 w-3.5 text-primary" />
+                    <col.icon className="h-3.5 w-3.5 text-primary" />
                   </div>
-                  <span className="text-sm font-medium truncate">{m.full_name}</span>
+                  <span className="text-sm font-medium truncate">{col.label}</span>
                 </div>
                 {weekDates.map((d) => {
                   const items = planningItems.filter(
-                    (it) => it.mechanic_id === m.id && it.date === formatDateStr(d)
+                    (it) => getItemColumnId(it) === col.id && it.date === formatDateStr(d)
                   );
                   return (
                     <div key={formatDateStr(d)} className="w-44 shrink-0 min-h-[5rem] rounded-lg border border-border/20 bg-secondary/20 p-1.5 space-y-1.5">

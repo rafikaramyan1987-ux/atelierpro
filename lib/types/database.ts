@@ -303,6 +303,7 @@ export interface RepairOrder {
   start_time: string | null;
   end_time: string | null;
   notes: string | null;
+  workspace_name: string | null;
   invoice_id: string | null;
   garage_id: string | null;
   created_by: string | null;
@@ -390,3 +391,13 @@ export const TIME_SLOTS = [
   '16:30',
   '17:00',
 ];
+
+export interface CannedTask {
+  id: string;
+  garage_id: string | null;
+  name: string;
+  description: string | null;
+  estimated_duration_minutes: number | null;
+  default_price: number | null;
+  created_at: string;
+}

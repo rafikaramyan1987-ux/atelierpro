@@ -38,6 +38,7 @@ import {
   type Profile,
   type AppointmentStatus,
   type DevisItem,
+  type CannedTask,
 } from '@/lib/types/database';
 import {
   CalendarClock,
@@ -51,6 +52,7 @@ import {
   Phone,
   Plus,
   Trash2,
+  ClipboardList,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
@@ -77,17 +79,20 @@ export default function RendezVousPage() {
 
   const [devisItems, setDevisItems] = useState<{ description: string; quantity: string; unit_price: string }[]>([{ description: '', quantity: '1', unit_price: '0' }]);
   const [devisResponse, setDevisResponse] = useState('');
+  const [cannedTasks, setCannedTasks] = useState<CannedTask[]>([]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const [apptRes, reqRes, mechRes] = await Promise.all([
+    const [apptRes, reqRes, mechRes, tasksRes] = await Promise.all([
       supabase.from('appointments').select('*, client:clients(*), vehicle:vehicles(*)').order('created_at', { ascending: false }),
       supabase.from('service_requests').select('*, client:clients(*), vehicle:vehicles(*), devis_items(*)').order('created_at', { ascending: false }),
       supabase.from('profiles').select('*').in('role', ['admin', 'mecanicien']).eq('active', true),
+      supabase.from('canned_tasks').select('*').order('name', { ascending: true }),
     ]);
     setAppointments(apptRes.data as any ?? []);
     setRequests(reqRes.data as any ?? []);
     setMechanics(mechRes.data as Profile[] ?? []);
+    setCannedTasks(tasksRes.data as CannedTask[] ?? []);
     setLoading(false);
   }, []);
 
@@ -206,6 +211,16 @@ export default function RendezVousPage() {
 
   function addDevisItem() {
     setDevisItems([...devisItems, { description: '', quantity: '1', unit_price: '0' }]);
+  }
+
+  function insertCannedTask(taskId: string) {
+    const task = cannedTasks.find((t) => t.id === taskId);
+    if (!task) return;
+    setDevisItems([...devisItems, {
+      description: task.description || task.name,
+      quantity: '1',
+      unit_price: task.default_price?.toString() ?? '0',
+    }]);
   }
 
   function removeDevisItem(index: number) {
@@ -656,6 +671,23 @@ export default function RendezVousPage() {
               <Button type="button" variant="outline" size="sm" onClick={addDevisItem}>
                 <Plus className="h-4 w-4 mr-1" /> {t('admin.appts.addItem')}
               </Button>
+              {cannedTasks.length > 0 && (
+                <div className="flex items-center gap-2 pt-2 border-t border-border/40">
+                  <ClipboardList className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <Select onValueChange={insertCannedTask}>
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder={t('cannedTasks.pickPlaceholder')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cannedTasks.map((task) => (
+                        <SelectItem key={task.id} value={task.id}>
+                          {task.name}{task.default_price != null ? ` — ${formatCHF(task.default_price)}` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
             {devisSubtotal > 0 && (
