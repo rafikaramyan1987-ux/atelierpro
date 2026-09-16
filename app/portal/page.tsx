@@ -26,6 +26,8 @@ import {
   Clock,
   Loader2,
   Wrench,
+  Bell,
+  AlertCircle,
 } from 'lucide-react';
 
 export default function ClientPortalHome() {
@@ -37,6 +39,7 @@ export default function ClientPortalHome() {
   const [appointments, setAppointments] = useState<(Appointment & { vehicle?: Vehicle })[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [clientId, setClientId] = useState<string | null>(null);
+  const [serviceDueVehicles, setServiceDueVehicles] = useState<{ vehicle: Vehicle; reason: string }[]>([]);
 
   useEffect(() => {
     if (!profile?.client_id) {
@@ -49,14 +52,44 @@ export default function ClientPortalHome() {
   useEffect(() => {
     if (!clientId) return;
     async function fetchData() {
-      const [vehiclesRes, apptsRes, invoicesRes] = await Promise.all([
+      const [vehiclesRes, apptsRes, invoicesRes, tasksRes] = await Promise.all([
         supabase.from('vehicles').select('*').eq('client_id', clientId).order('created_at', { ascending: false }),
         supabase.from('appointments').select('*, vehicle:vehicles(*)').eq('client_id', clientId).order('created_at', { ascending: false }).limit(5),
-        supabase.from('invoices').select('*').eq('client_id', clientId).order('created_at', { ascending: false }).limit(5),
+        supabase.from('invoices').select('*, vehicle:vehicles(*)').eq('client_id', clientId).order('created_at', { ascending: false }).limit(5),
+        supabase.from('canned_tasks').select('*').not('interval_months', 'is', null),
       ]);
-      setVehicles(vehiclesRes.data as Vehicle[] ?? []);
+      const allVehicles = vehiclesRes.data as Vehicle[] ?? [];
+      setVehicles(allVehicles);
       setAppointments(apptsRes.data as any ?? []);
       setInvoices(invoicesRes.data as Invoice[] ?? []);
+
+      // Compute service due
+      const tasks = (tasksRes.data as any[]) ?? [];
+      const allInvoices = (invoicesRes.data as any[]) ?? [];
+      const dueList: { vehicle: Vehicle; reason: string }[] = [];
+      const now = new Date();
+      for (const vehicle of allVehicles) {
+        const vehicleInvoices = allInvoices.filter((inv) => inv.vehicle_id === vehicle.id);
+        for (const task of tasks) {
+          const matching = vehicleInvoices.filter((inv) =>
+            (inv.notes ?? '').toLowerCase().includes(task.name.toLowerCase())
+          );
+          const lastInv = matching[0];
+          if (!lastInv) continue;
+          const lastDate = new Date(lastInv.issue_date);
+          const dueDate = new Date(lastDate.getTime() + (task.interval_months ?? 12) * 30 * 24 * 60 * 60 * 1000);
+          if (dueDate <= new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)) {
+            const days = Math.round((dueDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+            dueList.push({
+              vehicle,
+              reason: days <= 0 ? t('reminders.overdueShort', { days: Math.abs(days) }) : t('reminders.dueInShort', { days }),
+            });
+            break;
+          }
+        }
+      }
+      setServiceDueVehicles(dueList);
+
       setLoading(false);
     }
     fetchData();
@@ -139,6 +172,41 @@ export default function ClientPortalHome() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Service due notice */}
+      {serviceDueVehicles.length > 0 && (
+        <Card className="border-warning/40 border-2">
+          <CardContent className="p-5">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10 shrink-0">
+                <Bell className="h-5 w-5 text-warning" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold mb-2">{t('reminders.clientTitle')}</p>
+                <div className="space-y-2">
+                  {serviceDueVehicles.map((item, i) => (
+                    <div key={i} className="flex items-center justify-between rounded-lg border border-border/40 bg-secondary/30 p-3">
+                      <div className="flex items-center gap-2">
+                        <Car className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">{item.vehicle.brand} {item.vehicle.model} — {item.vehicle.license_plate}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />{item.reason}
+                        </span>
+                        <Button size="sm" variant="outline" onClick={() => router.push('/portal/rendez-vous')}>
+                          <CalendarClock className="h-3.5 w-3.5 mr-1" />
+                          {t('reminders.bookNow')}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-3">

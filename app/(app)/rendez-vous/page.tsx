@@ -53,6 +53,7 @@ import {
   Plus,
   Trash2,
   ClipboardList,
+  RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
@@ -79,6 +80,7 @@ export default function RendezVousPage() {
 
   const [devisItems, setDevisItems] = useState<{ description: string; quantity: string; unit_price: string }[]>([{ description: '', quantity: '1', unit_price: '0' }]);
   const [devisResponse, setDevisResponse] = useState('');
+  const [devisValidDays, setDevisValidDays] = useState('30');
   const [cannedTasks, setCannedTasks] = useState<CannedTask[]>([]);
 
   const fetchData = useCallback(async () => {
@@ -115,6 +117,7 @@ export default function RendezVousPage() {
     setActionDialog({ type: 'devis', item: req });
     setDevisItems([{ description: '', quantity: '1', unit_price: '0' }]);
     setDevisResponse('');
+    setDevisValidDays(req.valid_until_days?.toString() ?? '30');
   }
 
   async function handleApptAction(e: React.FormEvent) {
@@ -160,6 +163,7 @@ export default function RendezVousPage() {
     const { data: updatedData, error: reqError } = await supabase.from('service_requests').update({
       status: 'devis_recu',
       garage_response: devisResponse || null,
+      valid_until_days: parseInt(devisValidDays) || 30,
     }).eq('id', actionDialog.item.id).select();
 
     if (reqError) {
@@ -225,6 +229,21 @@ export default function RendezVousPage() {
 
   function removeDevisItem(index: number) {
     setDevisItems(devisItems.filter((_, i) => i !== index));
+  }
+
+  async function handleReactivateDevis(req: any) {
+    const newExpiry = new Date();
+    newExpiry.setDate(newExpiry.getDate() + (req.valid_until_days ?? 30));
+    const { error } = await supabase.from('service_requests').update({
+      status: 'devis_recu',
+      expiry_date: newExpiry.toISOString().split('T')[0],
+    }).eq('id', req.id);
+    if (error) {
+      toast.error(t('toast.error'), { description: error.message });
+    } else {
+      toast.success(t('devis.reactivated'));
+      fetchData();
+    }
   }
 
   function updateDevisItem(index: number, field: string, value: string) {
@@ -525,9 +544,27 @@ export default function RendezVousPage() {
                                       </div>
                                     </div>
                                   )}
-                                  {req.garage_response && (
-                                    <p className="text-xs text-muted-foreground mt-1">{t('admin.appts.response')}: {req.garage_response}</p>
-                                  )}
+                        {req.status === 'devis_recu' && req.expiry_date && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {t('devis.expiresOn')}: {new Date(req.expiry_date).toLocaleDateString('fr-CH')}
+                          </p>
+                        )}
+                        {req.status === 'devis_recu' && req.expiry_date && new Date(req.expiry_date) < new Date() && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="destructive" className="text-xs">{t('devis.expired')}</Badge>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={() => handleReactivateDevis(req)}
+                            >
+                              <RefreshCw className="h-3 w-3 mr-1" /> {t('devis.reactivate')}
+                            </Button>
+                          </div>
+                        )}
+                        {req.garage_response && (
+                          <p className="text-xs text-muted-foreground mt-1">{t('admin.appts.response')}: {req.garage_response}</p>
+                        )}
                                 </div>
                               </div>
                               <Badge
@@ -716,6 +753,17 @@ export default function RendezVousPage() {
                 value={devisResponse}
                 onChange={(e) => setDevisResponse(e.target.value)}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="devis-valid-days">{t('devis.validUntilDays')}</Label>
+              <Input
+                id="devis-valid-days"
+                type="number"
+                min="1"
+                value={devisValidDays}
+                onChange={(e) => setDevisValidDays(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">{t('devis.validUntilHint')}</p>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setActionDialog(null)}>{t('common.cancel')}</Button>

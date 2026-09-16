@@ -48,3 +48,11 @@ export function newDevisEmail(clientName: string, description: string, vehicle?:
     text: `Nouvelle demande de devis de ${clientName}: ${description}. ${vehicle ? 'Véhicule: ' + vehicle : ''}`,
   };
 }
+
+export function serviceReminderEmail(clientName: string, vehicleLabel: string, serviceName: string, dueReason: string) {
+  return {
+    subject: 'Votre véhicule est dû pour un entretien — AtelierPro',
+    html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;"><h1 style="color:#1e3a8a;">Entretien à prévoir</h1><p>Bonjour ${clientName},</p><p>Votre véhicule <strong>${vehicleLabel}</strong> est dû pour l'entretien suivant : <strong>${serviceName}</strong>.</p><p style="background:#fef3c7;padding:12px;border-radius:8px;margin:16px 0;">${dueReason}</p><p>Connectez-vous à votre espace AtelierPro pour prendre rendez-vous dès maintenant.</p><p style="color:#6b7280;font-size:14px;margin-top:24px;">AtelierPro — La plateforme automobile suisse</p></div>`,
+    text: `Bonjour ${clientName}, votre véhicule ${vehicleLabel} est dû pour: ${serviceName}. ${dueReason} Connectez-vous pour prendre rendez-vous.`,
+  };
+}

@@ -23,8 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { formatCHF, INVOICE_STATUS_LABELS, type Invoice } from '@/lib/types/database';
-import { Plus, Search, FileText, Loader2, Eye, Download } from 'lucide-react';
+import { formatCHF, INVOICE_STATUS_LABELS, PAYMENT_METHOD_LABELS, type Invoice } from '@/lib/types/database';
+import { Plus, Search, FileText, Loader2, Eye, Download, FileSpreadsheet } from 'lucide-react';
 import { generateInvoicePDF } from '@/lib/pdf';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
@@ -35,6 +35,9 @@ export default function FacturesPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [exportFrom, setExportFrom] = useState('');
+  const [exportTo, setExportTo] = useState('');
+  const [exporting, setExporting] = useState(false);
   const { t } = useI18n();
 
   const fetchInvoices = useCallback(async () => {
@@ -77,6 +80,82 @@ export default function FacturesPage() {
     toast.success(t('toast.pdfDownloaded'));
   }
 
+  async function handleExportCSV() {
+    setExporting(true);
+    try {
+      let query = supabase
+        .from('invoices')
+        .select('*, client:clients(first_name, last_name, company_name)')
+        .order('issue_date', { ascending: true });
+
+      if (exportFrom) {
+        query = query.gte('issue_date', exportFrom);
+      }
+      if (exportTo) {
+        query = query.lte('issue_date', exportTo + 'T23:59:59');
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      const rows = (data as any[]) ?? [];
+      const headers = [
+        t('export.invoiceNumber'),
+        t('export.date'),
+        t('export.clientName'),
+        t('export.subtotalHT'),
+        t('export.vatAmount'),
+        t('export.totalTTC'),
+        t('export.paymentStatus'),
+        t('export.paymentMethod'),
+        t('export.paymentDate'),
+      ];
+
+      const csvLines: string[] = [];
+      csvLines.push(headers.map((h) => `"${h.replace(/"/g, '""')}"`).join(';'));
+
+      for (const inv of rows) {
+        const clientName = inv.client?.company_name
+          || `${inv.client?.first_name ?? ''} ${inv.client?.last_name ?? ''}`.trim();
+        const statusLabel = inv.status === 'payee' ? t('invoices.paid')
+          : inv.status === 'envoyee' ? t('invoices.unpaid')
+          : inv.status === 'en_retard' ? t('invoices.late')
+          : inv.status === 'brouillon' ? t('invoices.draft')
+          : inv.status;
+        const methodLabel = inv.payment_method ? (PAYMENT_METHOD_LABELS[inv.payment_method as keyof typeof PAYMENT_METHOD_LABELS] ?? inv.payment_method) : '';
+        const paidDate = inv.paid_date ? new Date(inv.paid_date).toLocaleDateString('fr-CH') : '';
+
+        const values = [
+          inv.invoice_number,
+          new Date(inv.issue_date).toLocaleDateString('fr-CH'),
+          clientName,
+          Number(inv.subtotal).toFixed(2),
+          Number(inv.vat_amount).toFixed(2),
+          Number(inv.total).toFixed(2),
+          statusLabel,
+          methodLabel,
+          paidDate,
+        ];
+        csvLines.push(values.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(';'));
+      }
+
+      const csv = csvLines.join('\r\n');
+      const bom = '\uFEFF';
+      const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const dateStr = new Date().toISOString().split('T')[0];
+      a.download = `factures_${dateStr}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(t('export.success', { count: rows.length }));
+    } catch (err: any) {
+      toast.error(t('export.error'), { description: err.message });
+    }
+    setExporting(false);
+  }
+
   const filteredInvoices = invoices.filter((inv) => {
     if (statusFilter !== 'all' && inv.status !== statusFilter) return false;
     if (search) {
@@ -102,6 +181,27 @@ export default function FacturesPage() {
           {t('admin.invoices.new')}
         </Button>
       </PageHeader>
+
+      {/* Export section */}
+      <Card className="border-border/60">
+        <CardContent className="p-5">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5 text-primary" />
+              <span className="text-sm font-medium">{t('export.title')}</span>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 flex-1">
+              <Input type="date" value={exportFrom} onChange={(e) => setExportFrom(e.target.value)} className="sm:w-40" placeholder={t('export.from')} />
+              <Input type="date" value={exportTo} onChange={(e) => setExportTo(e.target.value)} className="sm:w-40" placeholder={t('export.to')} />
+            </div>
+            <Button variant="outline" onClick={handleExportCSV} disabled={exporting}>
+              {exporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+              {t('export.download')}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">{t('export.hint')}</p>
+        </CardContent>
+      </Card>
 
       {/* Summary */}
       <div className="grid gap-4 md:grid-cols-3">

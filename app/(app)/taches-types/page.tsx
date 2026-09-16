@@ -27,6 +27,7 @@ import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/auth-context';
 import { formatCHF, type CannedTask } from '@/lib/types/database';
+import { CalendarClock, Gauge } from 'lucide-react';
 
 export default function CannedTasksPage() {
   const { profile } = useAuth();
@@ -39,6 +40,8 @@ export default function CannedTasksPage() {
   const [description, setDescription] = useState('');
   const [duration, setDuration] = useState('');
   const [price, setPrice] = useState('');
+  const [intervalMonths, setIntervalMonths] = useState('');
+  const [intervalKm, setIntervalKm] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const fetchData = useCallback(async () => {
@@ -64,6 +67,8 @@ export default function CannedTasksPage() {
     setDescription('');
     setDuration('');
     setPrice('');
+    setIntervalMonths('');
+    setIntervalKm('');
     setDialogOpen(true);
   }
 
@@ -73,6 +78,8 @@ export default function CannedTasksPage() {
     setDescription(task.description ?? '');
     setDuration(task.estimated_duration_minutes?.toString() ?? '');
     setPrice(task.default_price?.toString() ?? '');
+    setIntervalMonths(task.interval_months?.toString() ?? '');
+    setIntervalKm(task.interval_km?.toString() ?? '');
     setDialogOpen(true);
   }
 
@@ -87,6 +94,8 @@ export default function CannedTasksPage() {
       description: description.trim() || null,
       estimated_duration_minutes: duration ? parseInt(duration) : null,
       default_price: price ? parseFloat(price) : null,
+      interval_months: intervalMonths ? parseInt(intervalMonths) : null,
+      interval_km: intervalKm ? parseInt(intervalKm) : null,
       garage_id: profile?.garage_id ?? null,
     };
 
@@ -166,7 +175,7 @@ export default function CannedTasksPage() {
                     </Button>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                   {task.estimated_duration_minutes != null && (
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
@@ -175,6 +184,18 @@ export default function CannedTasksPage() {
                   )}
                   {task.default_price != null && (
                     <span className="font-medium text-foreground">{formatCHF(task.default_price)}</span>
+                  )}
+                  {task.interval_months != null && (
+                    <span className="flex items-center gap-1">
+                      <CalendarClock className="h-3 w-3" />
+                      {task.interval_months} {t('cannedTasks.months')}
+                    </span>
+                  )}
+                  {task.interval_km != null && (
+                    <span className="flex items-center gap-1">
+                      <Gauge className="h-3 w-3" />
+                      {task.interval_km.toLocaleString('fr-CH')} km
+                    </span>
                   )}
                 </div>
               </CardContent>
@@ -209,6 +230,17 @@ export default function CannedTasksPage() {
                 <Input type="number" step="0.05" min="0" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" />
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>{t('cannedTasks.intervalMonths')}</Label>
+                <Input type="number" min="1" value={intervalMonths} onChange={(e) => setIntervalMonths(e.target.value)} placeholder="12" />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('cannedTasks.intervalKm')}</Label>
+                <Input type="number" min="100" value={intervalKm} onChange={(e) => setIntervalKm(e.target.value)} placeholder="15000" />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">{t('cannedTasks.intervalHint')}</p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('common.cancel')}</Button>

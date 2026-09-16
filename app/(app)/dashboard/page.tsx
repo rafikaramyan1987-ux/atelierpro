@@ -15,8 +15,10 @@ import {
   AlertTriangle,
   Clock,
   ArrowUpRight,
+  ArrowRight,
   CheckCircle2,
   Wrench,
+  Bell,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useI18n } from '@/lib/i18n/context';
@@ -48,6 +50,7 @@ interface DashboardData {
   monthlyRevenue: { month: string; revenue: number }[];
   invoiceStatusData: { name: string; value: number; color: string }[];
   teamMembers: Profile[];
+  reminderCount: number;
 }
 
 export default function DashboardPage() {
@@ -58,12 +61,15 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function fetchDashboard() {
-      const [invoices, clients, parts, profiles] = await Promise.all([
+      const [invoices, clients, parts, profiles, remindersRes] = await Promise.all([
         supabase.from('invoices').select('*, client:clients(first_name, last_name)').order('created_at', { ascending: false }).limit(10),
         supabase.from('clients').select('id', { count: 'exact', head: true }),
         supabase.from('parts').select('*').order('stock_quantity', { ascending: true }),
         supabase.from('profiles').select('*').in('role', ['admin', 'mecanicien']).order('created_at', { ascending: false }),
+        supabase.from('canned_tasks').select('id', { count: 'exact', head: true }).not('interval_months', 'is', null),
       ]);
+
+      const reminderCount = remindersRes.count ?? 0;
 
       const allInvoices = invoices.data ?? [];
       const allParts = parts.data ?? [];
@@ -119,6 +125,7 @@ export default function DashboardPage() {
         monthlyRevenue,
         invoiceStatusData,
         teamMembers: allProfiles,
+        reminderCount,
       });
       setLoading(false);
     }
@@ -362,6 +369,24 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Service reminders banner */}
+      {data.reminderCount > 0 && (
+        <Card className="border-primary/30 border-2 cursor-pointer hover:shadow-md transition-shadow" onClick={() => router.push('/rappels')}>
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                <Bell className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">{t('reminders.dashboardCount', { count: data.reminderCount })}</p>
+                <p className="text-xs text-muted-foreground">{t('reminders.dashboardHint')}</p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Team overview */}
       <Card className="border-border/60">

@@ -153,6 +153,8 @@ export interface ServiceRequest {
   garage_id: string | null;
   signature_data: string | null;
   signature_date: string | null;
+  expiry_date: string | null;
+  valid_until_days: number | null;
   created_at: string;
   updated_at: string;
   client?: Client;
@@ -399,5 +401,7 @@ export interface CannedTask {
   description: string | null;
   estimated_duration_minutes: number | null;
   default_price: number | null;
+  interval_months: number | null;
+  interval_km: number | null;
   created_at: string;
 }

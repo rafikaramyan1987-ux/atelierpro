@@ -33,7 +33,7 @@ import {
   type ServiceRequest,
   type DevisItem,
 } from '@/lib/types/database';
-import { FileSearch, Plus, Loader2, CheckCircle2, XCircle, Clock, FileText, Pen } from 'lucide-react';
+import { FileSearch, Plus, Loader2, CheckCircle2, XCircle, Clock, FileText, Pen, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { sendEmail, newDevisEmail } from '@/lib/email';
 import { SignaturePad } from '@/components/signature-pad';
@@ -187,6 +187,12 @@ export default function ClientDevisPage() {
                         <p className="text-sm text-muted-foreground mt-1 max-w-md">{req.description}</p>
                         <p className="text-xs text-muted-foreground mt-1">{new Date(req.created_at).toLocaleDateString('fr-CH')}</p>
 
+                        {req.status === 'devis_recu' && req.expiry_date && (
+                          <p className={`text-xs mt-1 ${new Date(req.expiry_date) < new Date() ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                            {new Date(req.expiry_date) < new Date() ? t('devis.expiredOn') : t('devis.expiresOn')}: {new Date(req.expiry_date).toLocaleDateString('fr-CH')}
+                          </p>
+                        )}
+
                         {req.status === 'devis_recu' && items.length > 0 && (
                           <div className="mt-3 rounded-lg border border-border/60 bg-secondary/30 p-3">
                             <p className="text-xs font-medium text-foreground mb-2">{t('devis.quoteFromGarage')}</p>
@@ -233,7 +239,7 @@ export default function ClientDevisPage() {
                       >
                         {req.status === 'devis_accepte' ? t('devis.status.accepted') : req.status === 'devis_refuse' ? t('devis.status.refused') : req.status === 'devis_recu' ? t('devis.status.received') : t('devis.status.pending')}
                       </Badge>
-                      {req.status === 'devis_recu' && (
+                      {req.status === 'devis_recu' && (!req.expiry_date || new Date(req.expiry_date) >= new Date()) && (
                         <div className="flex gap-2">
                           <Button size="sm" variant="outline" className="hover:text-destructive" onClick={() => handleRefuseDevis(req.id)}>
                             <XCircle className="h-3.5 w-3.5 mr-1" /> {t('devis.refuse')}
@@ -245,6 +251,11 @@ export default function ClientDevisPage() {
                             <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> {t('devis.accept')}
                           </Button>
                         </div>
+                      )}
+                      {req.status === 'devis_recu' && req.expiry_date && new Date(req.expiry_date) < new Date() && (
+                        <Badge variant="destructive" className="text-xs">
+                          <AlertTriangle className="h-3 w-3 mr-1" />{t('devis.expired')}
+                        </Badge>
                       )}
                       {req.status === 'devis_accepte' && req.signature_data && (
                         <Badge variant="outline" className="text-xs text-success border-success/30">
