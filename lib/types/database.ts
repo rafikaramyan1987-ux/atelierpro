@@ -51,6 +51,8 @@ export interface Vehicle {
   year: number | null;
   mileage: number | null;
   notes: string | null;
+  tyres_stored: boolean;
+  stored_tyre_set: 'summer' | 'winter' | null;
   created_at: string;
 }
 
@@ -188,6 +190,7 @@ export interface Garage {
   rating: number;
   review_count: number;
   commission_rate: number;
+  gardiennage_enabled: boolean;
   created_at: string;
 }
 
@@ -394,6 +397,8 @@ export const TIME_SLOTS = [
   '17:00',
 ];
 
+export type ReminderType = 'none' | 'interval' | 'seasonal';
+
 export interface CannedTask {
   id: string;
   garage_id: string | null;
@@ -401,7 +406,10 @@ export interface CannedTask {
   description: string | null;
   estimated_duration_minutes: number | null;
   default_price: number | null;
+  reminder_type: ReminderType;
   interval_months: number | null;
   interval_km: number | null;
+  seasonal_months: number[];
+  service_group: string | null;
   created_at: string;
 }
