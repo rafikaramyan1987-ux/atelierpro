@@ -21,13 +21,13 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'mon-garage', 'equipe',
   ],
   mecanicien: [
-    'mes-interventions', 'ordres-reparation', 'planning', 'stock',
+    'dashboard', 'mes-interventions', 'ordres-reparation', 'planning', 'stock',
     'commandes-pieces', 'clients', 'taches-types', 'rappels',
     'vehicules-courtoisie',
   ],
   secretaire: [
-    'factures', 'paiements', 'rendez-vous', 'rapports', 'clients',
-    'stock', 'commandes-pieces', 'vehicules-courtoisie',
+    'dashboard', 'factures', 'paiements', 'rendez-vous', 'rapports', 'clients',
+    'stock', 'commandes-pieces', 'vehicules-courtoisie', 'rappels',
   ],
   client: [],
 };
@@ -48,6 +48,7 @@ export interface Profile {
   active: boolean;
   client_id: string | null;
   garage_id: string | null;
+  must_change_password: boolean;
   created_at: string;
 }
 

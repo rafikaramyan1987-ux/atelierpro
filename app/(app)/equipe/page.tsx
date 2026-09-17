@@ -35,7 +35,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ROLE_LABELS, type Profile, type UserRole } from '@/lib/types/database';
-import { UserCircle, Plus, Loader2, Shield, Wrench, Trash2, Mail, Phone, Briefcase } from 'lucide-react';
+import { UserCircle, Plus, Loader2, Shield, Wrench, Trash2, Mail, Phone, Briefcase, KeyRound, Copy, CheckCircle2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 
@@ -52,8 +52,13 @@ export default function EquipePage() {
     full_name: '',
     role: 'mecanicien' as UserRole,
     phone: '',
-    password: '',
   });
+
+  const [createdPassword, setCreatedPassword] = useState<string | null>(null);
+  const [resetTarget, setResetTarget] = useState<Profile | null>(null);
+  const [resetPassword, setResetPassword] = useState<string | null>(null);
+  const [resetSubmitting, setResetSubmitting] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const isAdmin = currentUser?.role === 'admin';
 
@@ -80,39 +85,46 @@ export default function EquipePage() {
     e.preventDefault();
     setSubmitting(true);
 
-    const { error: signUpError } = await supabase.auth.signUp({
-      email: newMember.email,
-      password: newMember.password,
-      options: { data: { full_name: newMember.full_name } },
+    const { data, error } = await supabase.rpc('create_employee', {
+      p_email: newMember.email,
+      p_full_name: newMember.full_name,
+      p_role: newMember.role,
+      p_phone: newMember.phone || '',
     });
 
-    if (signUpError) {
-      toast.error('Erreur lors de la création du compte', { description: signUpError.message });
+    if (error) {
+      toast.error(t('team.createError'), { description: error.message });
       setSubmitting(false);
       return;
     }
 
-    // Wait a moment for the trigger to create the profile, then update it
-    await new Promise((r) => setTimeout(r, 1500));
-
-    const { data: newProfile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', newMember.email)
-      .maybeSingle();
-
-    if (newProfile) {
-      await supabase.from('profiles').update({
-        role: newMember.role,
-        phone: newMember.phone || null,
-      }).eq('id', newProfile.id);
-    }
-
+    setCreatedPassword(data as string);
     toast.success(t('team.addedToast'));
     setDialogOpen(false);
-    setNewMember({ email: '', full_name: '', role: 'mecanicien', phone: '', password: '' });
+    setNewMember({ email: '', full_name: '', role: 'mecanicien', phone: '' });
     fetchMembers();
     setSubmitting(false);
+  }
+
+  async function handleResetPassword() {
+    if (!resetTarget) return;
+    setResetSubmitting(true);
+    const { data, error } = await supabase.rpc('reset_employee_password', {
+      p_target_user_id: resetTarget.id,
+    });
+    if (error) {
+      toast.error(t('team.resetError'), { description: error.message });
+      setResetSubmitting(false);
+      return;
+    }
+    setResetPassword(data as string);
+    setResetSubmitting(false);
+  }
+
+  function copyToClipboard(text: string) {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   async function updateRole(member: Profile, role: UserRole) {
@@ -146,12 +158,12 @@ export default function EquipePage() {
   async function handleDelete(member: Profile) {
     if (!isAdmin) return;
     if (member.id === currentUser?.id) {
-      toast.error('Vous ne pouvez pas supprimer votre propre compte');
+      toast.error(t('team.cannotDeleteSelf'));
       return;
     }
     const { error } = await supabase.from('profiles').delete().eq('id', member.id);
     if (error) {
-      toast.error('Erreur lors de la suppression');
+      toast.error(t('team.deleteError'));
     } else {
       toast.success(t('team.deletedToast'));
       fetchMembers();
@@ -170,7 +182,7 @@ export default function EquipePage() {
     <div className="p-6 space-y-6">
       <PageHeader title={t('admin.team.title')} description={t('admin.team.desc')}>
         {isAdmin && (
-          <Button onClick={() => setDialogOpen(true)}>
+          <Button onClick={() => { setDialogOpen(true); setCreatedPassword(null); }}>
             <Plus className="h-4 w-4 mr-2" />
             {t('common.add')}
           </Button>
@@ -233,15 +245,6 @@ export default function EquipePage() {
         </Card>
       </div>
 
-      {!isAdmin && (
-        <div className="rounded-lg border border-warning/30 bg-warning/10 p-4 flex items-center gap-3">
-          <Shield className="h-5 w-5 text-warning" />
-          <p className="text-sm text-muted-foreground">
-            Vous êtes connecté en tant que mécanicien. Seuls les administrateurs peuvent gérer les membres de l'équipe.
-          </p>
-        </div>
-      )}
-
       {/* Members table */}
       <Card className="border-border/60">
         <CardContent className="p-0">
@@ -274,7 +277,10 @@ export default function EquipePage() {
                         <div>
                           <p className="font-medium">{member.full_name}</p>
                           {member.id === currentUser?.id && (
-                            <span className="text-xs text-primary">Vous</span>
+                            <span className="text-xs text-primary">{t('team.you')}</span>
+                          )}
+                          {member.must_change_password && (
+                            <span className="text-xs text-warning ml-1">({t('team.mustChangePwd')})</span>
                           )}
                         </div>
                       </div>
@@ -322,29 +328,41 @@ export default function EquipePage() {
                     </TableCell>
                     {isAdmin && (
                       <TableCell className="text-right">
-                        {member.id !== currentUser?.id && (
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="hover:text-destructive">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>{t('common.delete')}</DialogTitle>
-                              </DialogHeader>
-                              <p className="text-sm text-muted-foreground">
-                                {t('team.deleteConfirm', { name: member.full_name })}
-                              </p>
-                              <DialogFooter>
-                                <Button variant="outline">{t('common.cancel')}</Button>
-                                <Button variant="destructive" onClick={() => handleDelete(member)}>
-                                  {t('common.delete')}
+                        <div className="flex justify-end gap-1">
+                          {member.id !== currentUser?.id && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title={t('team.resetPassword')}
+                              onClick={() => { setResetTarget(member); setResetPassword(null); }}
+                            >
+                              <KeyRound className="h-4 w-4 text-primary" />
+                            </Button>
+                          )}
+                          {member.id !== currentUser?.id && (
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="hover:text-destructive">
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
-                              </DialogFooter>
-                            </DialogContent>
-                          </Dialog>
-                        )}
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>{t('common.delete')}</DialogTitle>
+                                </DialogHeader>
+                                <p className="text-sm text-muted-foreground">
+                                  {t('team.deleteConfirm', { name: member.full_name })}
+                                </p>
+                                <DialogFooter>
+                                  <Button variant="outline">{t('common.cancel')}</Button>
+                                  <Button variant="destructive" onClick={() => handleDelete(member)}>
+                                    {t('common.delete')}
+                                  </Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+                          )}
+                        </div>
                       </TableCell>
                     )}
                   </TableRow>
@@ -356,90 +374,173 @@ export default function EquipePage() {
       </Card>
 
       {/* Add member dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) setCreatedPassword(null); }}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('common.add')}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleAddMember} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="member-name">{t('team.fullName')} *</Label>
-              <Input
-                id="member-name"
-                required
-                placeholder="Jean Dupont"
-                value={newMember.full_name}
-                onChange={(e) => setNewMember({ ...newMember, full_name: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="member-email">{t('team.email')} *</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="member-email"
-                  type="email"
-                  required
-                  placeholder="membre@atelier.ch"
-                  className="pl-10"
-                  value={newMember.email}
-                  onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="member-password">{t('team.tempPassword')} *</Label>
-              <Input
-                id="member-password"
-                type="password"
-                required
-                minLength={6}
-                placeholder="••••••••"
-                value={newMember.password}
-                onChange={(e) => setNewMember({ ...newMember, password: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="member-phone">{t('team.phone')}</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="member-phone"
-                    placeholder="+41 79 555 12 34"
-                    className="pl-10"
-                    value={newMember.phone}
-                    onChange={(e) => setNewMember({ ...newMember, phone: e.target.value })}
-                  />
+          {createdPassword ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>{t('team.accountCreated')}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 p-4">
+                  <AlertCircle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">{t('team.tempPasswordWarning')}</p>
+                    <p className="text-xs text-muted-foreground">{t('team.tempPasswordWarningDesc')}</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>{t('team.tempPassword')}</Label>
+                  <div className="flex items-center gap-2">
+                    <Input readOnly value={createdPassword} className="font-mono" />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => copyToClipboard(createdPassword)}
+                    >
+                      {copied ? <CheckCircle2 className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="member-role">{t('team.role')}</Label>
-                <Select
-                  value={newMember.role}
-                  onValueChange={(v) => setNewMember({ ...newMember, role: v as UserRole })}
-                >
-                  <SelectTrigger id="member-role">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">{t('role.admin')}</SelectItem>
-                    <SelectItem value="mecanicien">{t('role.mecanicien')}</SelectItem>
-                    <SelectItem value="secretaire">{t('role.secretaire')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                {t('common.cancel')}
-              </Button>
-              <Button type="submit" disabled={submitting}>
-                {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                {t('common.save')}
-              </Button>
-            </DialogFooter>
-          </form>
+              <DialogFooter>
+                <Button onClick={() => { setDialogOpen(false); setCreatedPassword(null); }}>
+                  {t('common.close')}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>{t('team.addMember')}</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleAddMember} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="member-name">{t('team.fullName')} *</Label>
+                  <Input
+                    id="member-name"
+                    required
+                    placeholder="Jean Dupont"
+                    value={newMember.full_name}
+                    onChange={(e) => setNewMember({ ...newMember, full_name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="member-email">{t('team.email')} *</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="member-email"
+                      type="email"
+                      required
+                      placeholder="membre@atelier.ch"
+                      className="pl-10"
+                      value={newMember.email}
+                      onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="member-phone">{t('team.phone')}</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="member-phone"
+                        placeholder="+41 79 555 12 34"
+                        className="pl-10"
+                        value={newMember.phone}
+                        onChange={(e) => setNewMember({ ...newMember, phone: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="member-role">{t('team.role')}</Label>
+                    <Select
+                      value={newMember.role}
+                      onValueChange={(v) => setNewMember({ ...newMember, role: v as UserRole })}
+                    >
+                      <SelectTrigger id="member-role">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="mecanicien">{t('role.mecanicien')}</SelectItem>
+                        <SelectItem value="secretaire">{t('role.secretaire')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                    {t('common.cancel')}
+                  </Button>
+                  <Button type="submit" disabled={submitting}>
+                    {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                    {t('common.save')}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset password dialog */}
+      <Dialog open={!!resetTarget} onOpenChange={(open) => { if (!open) { setResetTarget(null); setResetPassword(null); } }}>
+        <DialogContent>
+          {resetTarget && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{t('team.resetPasswordTitle')}</DialogTitle>
+              </DialogHeader>
+              {resetPassword ? (
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 p-4">
+                    <AlertCircle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">{t('team.tempPasswordWarning')}</p>
+                      <p className="text-xs text-muted-foreground">{t('team.tempPasswordWarningDesc')}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t('team.tempPassword')}</Label>
+                    <div className="flex items-center gap-2">
+                      <Input readOnly value={resetPassword} className="font-mono" />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => copyToClipboard(resetPassword)}
+                      >
+                        {copied ? <CheckCircle2 className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button onClick={() => { setResetTarget(null); setResetPassword(null); }}>
+                      {t('common.close')}
+                    </Button>
+                  </DialogFooter>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    {t('team.resetConfirm', { name: resetTarget.full_name })}
+                  </p>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setResetTarget(null)}>
+                      {t('common.cancel')}
+                    </Button>
+                    <Button onClick={handleResetPassword} disabled={resetSubmitting}>
+                      {resetSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <KeyRound className="h-4 w-4 mr-2" />}
+                      {t('team.resetPassword')}
+                    </Button>
+                  </DialogFooter>
+                </div>
+              )}
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>

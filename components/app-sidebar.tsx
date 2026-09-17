@@ -35,7 +35,7 @@ import { cn } from '@/lib/utils';
 import { canAccess, type UserRole } from '@/lib/types/database';
 
 const navItems = [
-  { labelKey: 'sidebar.garage.dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin'] as UserRole[] },
+  { labelKey: 'sidebar.garage.dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'mecanicien', 'secretaire'] as UserRole[] },
   { labelKey: 'sidebar.garage.myInterventions', href: '/mes-interventions', icon: Hammer, roles: ['admin', 'mecanicien'] },
   { labelKey: 'sidebar.garage.appointments', href: '/rendez-vous', icon: CalendarClock, roles: ['admin', 'secretaire'] },
   { labelKey: 'sidebar.garage.repairOrders', href: '/ordres-reparation', icon: ClipboardList, roles: ['admin', 'mecanicien'] },
@@ -46,7 +46,7 @@ const navItems = [
   { labelKey: 'sidebar.garage.orders', href: '/commandes-pieces', icon: ShoppingCart, roles: ['admin', 'mecanicien', 'secretaire'] },
   { labelKey: 'sidebar.garage.loaners', href: '/vehicules-courtoisie', icon: CarFront, roles: ['admin', 'mecanicien', 'secretaire'] },
   { labelKey: 'sidebar.garage.cannedTasks', href: '/taches-types', icon: ListChecks, roles: ['admin', 'mecanicien'] },
-  { labelKey: 'sidebar.garage.reminders', href: '/rappels', icon: Bell, roles: ['admin'] },
+  { labelKey: 'sidebar.garage.reminders', href: '/rappels', icon: Bell, roles: ['admin', 'secretaire'] },
   { labelKey: 'sidebar.garage.reports', href: '/rapports', icon: BarChart3, roles: ['admin', 'secretaire'] },
   { labelKey: 'sidebar.garage.profile', href: '/mon-garage', icon: Store, roles: ['admin'] },
   { labelKey: 'sidebar.garage.team', href: '/equipe', icon: UserCircle, roles: ['admin'] },
