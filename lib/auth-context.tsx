@@ -128,6 +128,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) {
       return { error: error.message, garageId: null };
     }
+    if (user) {
+      await fetchProfile(user.id);
+    }
     return { error: null, garageId: data as string };
   }
 
