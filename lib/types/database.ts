@@ -1,17 +1,43 @@
-export type UserRole = 'admin' | 'mecanicien' | 'client';
+export type UserRole = 'admin' | 'mecanicien' | 'secretaire' | 'client';
 
-export type InvoiceStatus = 'brouillon' | 'envoyee' | 'payee' | 'en_retard';
+export type InvoiceStatus = 'brouillon' | 'envoyee' | 'payee' | 'en_retard' | 'en_attente_validation';
 export type PaymentMethod = 'twint' | 'especes' | 'carte' | 'virement' | 'qr_bill';
 export type TwintPaymentStatus = 'en_attente' | 'confirmee' | 'echouee' | 'remboursee';
 
 export type AppointmentStatus = 'en_attente' | 'confirme' | 'refuse' | 'termine' | 'annule';
 export type ServiceRequestType = 'demande_devis';
-export type DevisStatus = 'en_attente' | 'devis_recu' | 'devis_accepte' | 'devis_refuse';
+export type DevisStatus = 'en_attente' | 'devis_recu' | 'devis_accepte' | 'devis_refuse' | 'en_attente_validation';
 export type ServiceRequestStatus = DevisStatus;
 
-export const GARAGE_ROLES: UserRole[] = ['admin', 'mecanicien'];
+export const GARAGE_ROLES: UserRole[] = ['admin', 'mecanicien', 'secretaire'];
 export const isGarageStaff = (role: UserRole | null | undefined): boolean =>
   !!role && GARAGE_ROLES.includes(role);
+
+export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
+  admin: [
+    'dashboard', 'mes-interventions', 'rendez-vous', 'ordres-reparation', 'planning',
+    'factures', 'paiements', 'clients', 'stock', 'commandes-pieces',
+    'vehicules-courtoisie', 'taches-types', 'rappels', 'rapports',
+    'mon-garage', 'equipe',
+  ],
+  mecanicien: [
+    'mes-interventions', 'ordres-reparation', 'planning', 'stock',
+    'commandes-pieces', 'clients', 'taches-types', 'rappels',
+    'vehicules-courtoisie',
+  ],
+  secretaire: [
+    'factures', 'paiements', 'rendez-vous', 'rapports', 'clients',
+    'stock', 'commandes-pieces', 'vehicules-courtoisie',
+  ],
+  client: [],
+};
+
+export function canAccess(role: UserRole | null | undefined, path: string): boolean {
+  if (!role) return false;
+  const perms = ROLE_PERMISSIONS[role] ?? [];
+  const basePath = path.replace(/^\//, '').split('/')[0];
+  return perms.includes(basePath);
+}
 
 export interface Profile {
   id: string;
@@ -157,6 +183,7 @@ export interface ServiceRequest {
   signature_date: string | null;
   expiry_date: string | null;
   valid_until_days: number | null;
+  admin_comment: string | null;
   created_at: string;
   updated_at: string;
   client?: Client;
@@ -244,6 +271,7 @@ export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
   envoyee: 'Envoyée',
   payee: 'Payée',
   en_retard: 'En retard',
+  en_attente_validation: 'En attente de validation',
 };
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
@@ -257,6 +285,7 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
 export const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Administrateur',
   mecanicien: 'Mécanicien',
+  secretaire: 'Secrétaire',
   client: 'Client',
 };
 
@@ -277,6 +306,7 @@ export const SERVICE_REQUEST_STATUS_LABELS: Record<ServiceRequestStatus, string>
   devis_recu: 'Devis reçu',
   devis_accepte: 'Accepté',
   devis_refuse: 'Refusé',
+  en_attente_validation: 'En attente de validation',
 };
 
 export const DEVIS_STATUS_LABELS = SERVICE_REQUEST_STATUS_LABELS;

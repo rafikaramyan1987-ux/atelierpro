@@ -32,24 +32,25 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { canAccess, type UserRole } from '@/lib/types/database';
 
 const navItems = [
-  { labelKey: 'sidebar.garage.dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'mecanicien'] },
-  { labelKey: 'sidebar.garage.myInterventions', href: '/mes-interventions', icon: Hammer, roles: ['mecanicien'] },
-  { labelKey: 'sidebar.garage.appointments', href: '/rendez-vous', icon: CalendarClock, roles: ['admin', 'mecanicien'] },
+  { labelKey: 'sidebar.garage.dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin'] as UserRole[] },
+  { labelKey: 'sidebar.garage.myInterventions', href: '/mes-interventions', icon: Hammer, roles: ['admin', 'mecanicien'] },
+  { labelKey: 'sidebar.garage.appointments', href: '/rendez-vous', icon: CalendarClock, roles: ['admin', 'secretaire'] },
   { labelKey: 'sidebar.garage.repairOrders', href: '/ordres-reparation', icon: ClipboardList, roles: ['admin', 'mecanicien'] },
   { labelKey: 'sidebar.garage.planning', href: '/planning', icon: CalendarDays, roles: ['admin', 'mecanicien'] },
-  { labelKey: 'sidebar.garage.invoices', href: '/factures', icon: FileText, roles: ['admin', 'mecanicien'] },
-  { labelKey: 'sidebar.garage.clients', href: '/clients', icon: Users, roles: ['admin', 'mecanicien'] },
-  { labelKey: 'sidebar.garage.stock', href: '/stock', icon: Package, roles: ['admin', 'mecanicien'] },
-  { labelKey: 'sidebar.garage.orders', href: '/commandes-pieces', icon: ShoppingCart, roles: ['admin', 'mecanicien'] },
-  { labelKey: 'sidebar.garage.loaners', href: '/vehicules-courtoisie', icon: CarFront, roles: ['admin', 'mecanicien'] },
+  { labelKey: 'sidebar.garage.invoices', href: '/factures', icon: FileText, roles: ['admin', 'secretaire'] },
+  { labelKey: 'sidebar.garage.clients', href: '/clients', icon: Users, roles: ['admin', 'mecanicien', 'secretaire'] },
+  { labelKey: 'sidebar.garage.stock', href: '/stock', icon: Package, roles: ['admin', 'mecanicien', 'secretaire'] },
+  { labelKey: 'sidebar.garage.orders', href: '/commandes-pieces', icon: ShoppingCart, roles: ['admin', 'mecanicien', 'secretaire'] },
+  { labelKey: 'sidebar.garage.loaners', href: '/vehicules-courtoisie', icon: CarFront, roles: ['admin', 'mecanicien', 'secretaire'] },
   { labelKey: 'sidebar.garage.cannedTasks', href: '/taches-types', icon: ListChecks, roles: ['admin', 'mecanicien'] },
-  { labelKey: 'sidebar.garage.reminders', href: '/rappels', icon: Bell, roles: ['admin', 'mecanicien'] },
-  { labelKey: 'sidebar.garage.reports', href: '/rapports', icon: BarChart3, roles: ['admin', 'mecanicien'] },
-  { labelKey: 'sidebar.garage.profile', href: '/mon-garage', icon: Store, roles: ['admin', 'mecanicien'] },
+  { labelKey: 'sidebar.garage.reminders', href: '/rappels', icon: Bell, roles: ['admin'] },
+  { labelKey: 'sidebar.garage.reports', href: '/rapports', icon: BarChart3, roles: ['admin', 'secretaire'] },
+  { labelKey: 'sidebar.garage.profile', href: '/mon-garage', icon: Store, roles: ['admin'] },
   { labelKey: 'sidebar.garage.team', href: '/equipe', icon: UserCircle, roles: ['admin'] },
-  { labelKey: 'sidebar.garage.payments', href: '/paiements', icon: CreditCard, roles: ['admin'] },
+  { labelKey: 'sidebar.garage.payments', href: '/paiements', icon: CreditCard, roles: ['admin', 'secretaire'] },
 ];
 
 export function AppSidebar({ currentPath }: { currentPath: string }) {
@@ -58,15 +59,18 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [pendingDevisCount, setPendingDevisCount] = useState(0);
 
   useEffect(() => {
     async function fetchPendingCount() {
-      const [apptRes, reqRes] = await Promise.all([
+      const [apptRes, reqRes, devisRes] = await Promise.all([
         supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('status', 'en_attente'),
         supabase.from('service_requests').select('id', { count: 'exact', head: true }).eq('status', 'en_attente'),
+        supabase.from('service_requests').select('id', { count: 'exact', head: true }).eq('status', 'en_attente_validation'),
       ]);
       const total = (apptRes.count ?? 0) + (reqRes.count ?? 0);
       setPendingCount(total);
+      setPendingDevisCount(devisRes.count ?? 0);
     }
     fetchPendingCount();
   }, [currentPath]);
@@ -98,7 +102,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
       </div>
 
       <nav className="flex-1 space-y-1 p-4 overflow-y-auto scrollbar-thin">
-        {navItems.filter((item) => !item.roles || item.roles.includes(profile?.role ?? '')).map((item) => {
+        {navItems.filter((item) => !item.roles || item.roles.includes(profile?.role ?? ('' as UserRole))).map((item) => {
           const isActive = currentPath === item.href || currentPath.startsWith(item.href + '/');
           const Icon = item.icon;
           return (
@@ -117,6 +121,11 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
               {item.href === '/rendez-vous' && pendingCount > 0 && (
                 <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
                   {pendingCount}
+                </span>
+              )}
+              {item.href === '/dashboard' && pendingDevisCount > 0 && profile?.role === 'admin' && (
+                <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-warning px-1.5 text-[10px] font-bold text-warning-foreground">
+                  {pendingDevisCount}
                 </span>
               )}
             </button>

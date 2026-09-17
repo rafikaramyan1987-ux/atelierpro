@@ -35,7 +35,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ROLE_LABELS, type Profile, type UserRole } from '@/lib/types/database';
-import { UserCircle, Plus, Loader2, Shield, Wrench, Trash2, Mail, Phone } from 'lucide-react';
+import { UserCircle, Plus, Loader2, Shield, Wrench, Trash2, Mail, Phone, Briefcase } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 
@@ -66,10 +66,10 @@ export default function EquipePage() {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .in('role', ['admin', 'mecanicien'])
+      .in('role', ['admin', 'mecanicien', 'secretaire'])
       .order('created_at', { ascending: false });
     if (error) {
-      toast.error('Erreur lors du chargement de l\'équipe');
+      toast.error(t('team.fetchError'));
     } else {
       setMembers(data as Profile[]);
     }
@@ -117,12 +117,15 @@ export default function EquipePage() {
 
   async function updateRole(member: Profile, role: UserRole) {
     if (!isAdmin) {
-      toast.error('Seuls les administrateurs peuvent modifier les rôles');
+      toast.error(t('team.onlyAdmins'));
       return;
     }
-    const { error } = await supabase.from('profiles').update({ role }).eq('id', member.id);
+    const { error } = await supabase.rpc('change_user_role', {
+      p_target_user_id: member.id,
+      p_new_role: role,
+    });
     if (error) {
-      toast.error('Erreur lors de la modification du rôle');
+      toast.error(t('team.roleUpdateError'), { description: error.message });
     } else {
       toast.success(t('team.roleUpdatedToast'));
       fetchMembers();
@@ -161,6 +164,7 @@ export default function EquipePage() {
 
   const adminCount = members.filter((m) => m.role === 'admin').length;
   const mecanicienCount = members.filter((m) => m.role === 'mecanicien').length;
+  const secretaireCount = members.filter((m) => m.role === 'secretaire').length;
 
   return (
     <div className="p-6 space-y-6">
@@ -210,6 +214,19 @@ export default function EquipePage() {
               <div>
                 <p className="text-sm text-muted-foreground">{t('team.mechanics')}</p>
                 <p className="text-xl font-bold">{mecanicienCount}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-border/60">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
+                <Briefcase className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">{t('team.secretaries')}</p>
+                <p className="text-xl font-bold">{secretaireCount}</p>
               </div>
             </div>
           </CardContent>
@@ -276,12 +293,15 @@ export default function EquipePage() {
                           <SelectContent>
                             <SelectItem value="admin">{t('role.admin')}</SelectItem>
                             <SelectItem value="mecanicien">{t('role.mecanicien')}</SelectItem>
+                            <SelectItem value="secretaire">{t('role.secretaire')}</SelectItem>
                           </SelectContent>
                         </Select>
                       ) : (
                         <Badge variant={member.role === 'admin' ? 'default' : 'secondary'}>
                           {member.role === 'admin' ? (
                             <><Shield className="h-3 w-3 mr-1" /> {t('role.admin')}</>
+                          ) : member.role === 'secretaire' ? (
+                            <><Briefcase className="h-3 w-3 mr-1" /> {t('role.secretaire')}</>
                           ) : (
                             <><Wrench className="h-3 w-3 mr-1" /> {t('role.mecanicien')}</>
                           )}
@@ -405,6 +425,7 @@ export default function EquipePage() {
                   <SelectContent>
                     <SelectItem value="admin">{t('role.admin')}</SelectItem>
                     <SelectItem value="mecanicien">{t('role.mecanicien')}</SelectItem>
+                    <SelectItem value="secretaire">{t('role.secretaire')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

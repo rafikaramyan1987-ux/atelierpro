@@ -13,6 +13,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, fullName: string, role?: string, clientId?: string) => Promise<{ error: string | null; session: Session | null; user: User | null }>;
   signOut: () => Promise<void>;
+  createGarageAsAdmin: (name: string, phone?: string, email?: string) => Promise<{ error: string | null; garageId: string | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -118,6 +119,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: null, session: data.session ?? null, user: data.user ?? null };
   }
 
+  async function createGarageAsAdmin(name: string, phone?: string, email?: string): Promise<{ error: string | null; garageId: string | null }> {
+    const { data, error } = await supabase.rpc('create_garage_as_admin', {
+      p_name: name,
+      p_phone: phone ?? '',
+      p_email: email ?? null,
+    });
+    if (error) {
+      return { error: error.message, garageId: null };
+    }
+    return { error: null, garageId: data as string };
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
     setProfile(null);
@@ -126,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, session, profile, loading, signIn, signUp, signOut, createGarageAsAdmin }}>
       {children}
     </AuthContext.Provider>
   );

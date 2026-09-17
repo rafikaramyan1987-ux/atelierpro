@@ -24,10 +24,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { formatCHF, INVOICE_STATUS_LABELS, PAYMENT_METHOD_LABELS, type Invoice } from '@/lib/types/database';
-import { Plus, Search, FileText, Loader2, Eye, Download, FileSpreadsheet } from 'lucide-react';
+import { Plus, Search, FileText, Loader2, Eye, Download, FileSpreadsheet, Send } from 'lucide-react';
 import { generateInvoicePDF } from '@/lib/pdf';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
+import { useAuth } from '@/lib/auth-context';
 
 export default function FacturesPage() {
   const router = useRouter();
@@ -39,6 +40,7 @@ export default function FacturesPage() {
   const [exportTo, setExportTo] = useState('');
   const [exporting, setExporting] = useState(false);
   const { t } = useI18n();
+  const { profile } = useAuth();
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
@@ -78,6 +80,16 @@ export default function FacturesPage() {
 
     generateInvoicePDF(invoice, invoice.client, vehicle, items ?? []);
     toast.success(t('toast.pdfDownloaded'));
+  }
+
+  async function handleIssueInvoice(invoice: Invoice) {
+    const { error } = await supabase.from('invoices').update({ status: 'envoyee' }).eq('id', invoice.id);
+    if (error) {
+      toast.error(t('toast.error'), { description: error.message });
+    } else {
+      toast.success(t('invList.invoiceSent'));
+      fetchInvoices();
+    }
   }
 
   async function handleExportCSV() {
@@ -244,6 +256,7 @@ export default function FacturesPage() {
             <SelectItem value="all">{t('common.all')}</SelectItem>
             <SelectItem value="brouillon">{t('invoices.draft')}</SelectItem>
             <SelectItem value="envoyee">{t('invoices.unpaid')}</SelectItem>
+            <SelectItem value="en_attente_validation">{t('invoices.pendingValidation')}</SelectItem>
             <SelectItem value="payee">{t('invoices.paid')}</SelectItem>
             <SelectItem value="en_retard">{t('invoices.late')}</SelectItem>
           </SelectContent>
@@ -294,11 +307,12 @@ export default function FacturesPage() {
                           invoice.status === 'payee' ? 'default'
                           : invoice.status === 'en_retard' ? 'destructive'
                           : invoice.status === 'envoyee' ? 'secondary'
+                          : invoice.status === 'en_attente_validation' ? 'outline'
                           : 'outline'
                         }
                         className="text-xs"
                       >
-                        {invoice.status === 'brouillon' ? t('invoices.draft') : invoice.status === 'envoyee' ? t('invoices.unpaid') : invoice.status === 'payee' ? t('invoices.paid') : invoice.status === 'en_retard' ? t('invoices.late') : INVOICE_STATUS_LABELS[invoice.status]}
+                        {invoice.status === 'brouillon' ? t('invoices.draft') : invoice.status === 'envoyee' ? t('invoices.unpaid') : invoice.status === 'payee' ? t('invoices.paid') : invoice.status === 'en_retard' ? t('invoices.late') : invoice.status === 'en_attente_validation' ? t('invoices.pendingValidation') : INVOICE_STATUS_LABELS[invoice.status]}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
@@ -306,6 +320,11 @@ export default function FacturesPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                        {invoice.status === 'en_attente_validation' && (profile?.role === 'admin' || profile?.role === 'secretaire') && (
+                          <Button variant="ghost" size="icon" title={t('invList.issueInvoice')} onClick={() => handleIssueInvoice(invoice)}>
+                            <Send className="h-4 w-4 text-primary" />
+                          </Button>
+                        )}
                         <Button variant="ghost" size="icon" onClick={() => router.push(`/factures/${invoice.id}`)}>
                           <Eye className="h-4 w-4" />
                         </Button>

@@ -21,6 +21,7 @@ import { formatCHF, calculateVAT, VAT_RATE, type Client, type Vehicle, type Part
 import { Plus, Trash2, Loader2, ArrowLeft, Save, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
+import { useAuth } from '@/lib/auth-context';
 
 interface FormItem {
   id: string;
@@ -38,6 +39,7 @@ export default function NewInvoicePage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const { t } = useI18n();
+  const { profile } = useAuth();
 
   const [clientId, setClientId] = useState('');
   const [vehicleId, setVehicleId] = useState('');
@@ -112,11 +114,15 @@ export default function NewInvoicePage() {
       return;
     }
     if (items.some((i) => !i.description || !i.unit_price)) {
-      toast.error('Veuillez remplir toutes les lignes');
+      toast.error(t('invList.fillAllItems'));
       return;
     }
 
     setSubmitting(true);
+
+    // Mechanics cannot issue invoices directly — send to validation instead
+    const isPrivileged = profile?.role === 'admin' || profile?.role === 'secretaire';
+    const actualStatus = status === 'envoyee' && !isPrivileged ? 'en_attente_validation' : status;
 
     const { data: invoiceNumber } = await supabase.rpc('generate_invoice_number');
 
@@ -124,7 +130,7 @@ export default function NewInvoicePage() {
       invoice_number: invoiceNumber,
       client_id: clientId,
       vehicle_id: vehicleId || null,
-      status,
+      status: actualStatus,
       subtotal: Math.round(subtotal * 100) / 100,
       vat_rate: VAT_RATE,
       vat_amount: vat,
@@ -155,9 +161,15 @@ export default function NewInvoicePage() {
     const { error: itemsError } = await supabase.from('invoice_items').insert(itemPayload);
 
     if (itemsError) {
-      toast.error('Erreur lors de l\'ajout des lignes', { description: itemsError.message });
+      toast.error(t('invList.itemsError'), { description: itemsError.message });
     } else {
-      toast.success(status === 'brouillon' ? t('invList.draftSaved') : t('invList.invoiceSent'));
+      if (actualStatus === 'brouillon') {
+        toast.success(t('invList.draftSaved'));
+      } else if (actualStatus === 'en_attente_validation') {
+        toast.success(t('invList.submittedForApproval'));
+      } else {
+        toast.success(t('invList.invoiceSent'));
+      }
       router.push('/factures');
     }
     setSubmitting(false);
@@ -389,7 +401,7 @@ export default function NewInvoicePage() {
         </Button>
         <Button onClick={() => handleSubmit('envoyee')} disabled={submitting}>
           {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-          {t('common.save')}
+          {profile?.role === 'admin' || profile?.role === 'secretaire' ? t('invList.issueInvoice') : t('invList.submitForApproval')}
         </Button>
       </div>
     </div>

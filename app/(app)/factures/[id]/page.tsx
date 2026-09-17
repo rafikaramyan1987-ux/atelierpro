@@ -132,6 +132,7 @@ export default function InvoiceDetailPage() {
     envoyee: { icon: Clock, color: 'text-primary', bg: 'bg-primary/10' },
     brouillon: { icon: Clock, color: 'text-muted-foreground', bg: 'bg-muted' },
     en_retard: { icon: AlertTriangle, color: 'text-destructive', bg: 'bg-destructive/10' },
+    en_attente_validation: { icon: Clock, color: 'text-warning', bg: 'bg-warning/10' },
   };
   const StatusIcon = statusConfig[invoice.status].icon;
 

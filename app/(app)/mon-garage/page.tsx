@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 export default function MonGaragePage() {
-  const { profile } = useAuth();
+  const { profile, createGarageAsAdmin } = useAuth();
   const { t } = useI18n();
 
   const [garage, setGarage] = useState<Garage | null>(null);
@@ -100,31 +100,28 @@ export default function MonGaragePage() {
 
   async function handleCreate() {
     setCreating(true);
-    const { data, error } = await supabase
-      .from('garages')
-      .insert({
-        name: profile?.full_name ? `Garage ${profile.full_name}` : 'Mon garage',
-        address: '',
-        city: '',
-        postal_code: '',
-        phone: profile?.phone || '',
-        email: profile?.email || '',
-        services_offered: [],
-      })
-      .select()
-      .single();
+    const { error, garageId } = await createGarageAsAdmin(
+      profile?.full_name ? `Garage ${profile.full_name}` : 'Mon garage',
+      profile?.phone || '',
+      profile?.email || '',
+    );
 
-    if (error || !data) {
-      toast.error(t('garageProfile.toast.error'), { description: error?.message });
+    if (error || !garageId) {
+      toast.error(t('garageProfile.toast.error'), { description: error ?? 'Unknown error' });
       setCreating(false);
       return;
     }
 
-    await supabase.rpc('set_own_garage_id', { p_garage_id: data.id });
-    setGarage(data as Garage);
-    setName(data.name);
-    setPhone(data.phone);
-    setEmail(data.email || '');
+    const { data: garageData } = await supabase
+      .from('garages')
+      .select('*')
+      .eq('id', garageId)
+      .single();
+
+    setGarage(garageData as Garage);
+    setName(garageData?.name ?? '');
+    setPhone(garageData?.phone ?? '');
+    setEmail(garageData?.email ?? '');
     setCreating(false);
   }
 

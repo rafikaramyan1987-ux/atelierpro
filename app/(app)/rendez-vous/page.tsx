@@ -54,6 +54,8 @@ import {
   Trash2,
   ClipboardList,
   RefreshCw,
+  ShieldCheck,
+  ShieldAlert,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
@@ -82,6 +84,8 @@ export default function RendezVousPage() {
   const [devisResponse, setDevisResponse] = useState('');
   const [devisValidDays, setDevisValidDays] = useState('30');
   const [cannedTasks, setCannedTasks] = useState<CannedTask[]>([]);
+  const [rejectDialog, setRejectDialog] = useState<{ item: any } | null>(null);
+  const [rejectComment, setRejectComment] = useState('');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -159,9 +163,12 @@ export default function RendezVousPage() {
     if (!actionDialog) return;
     setSubmitting(true);
 
-    // Update the service request status to devis_recu
+    const isAdmin = profile?.role === 'admin';
+    const newStatus = isAdmin ? 'devis_recu' : 'en_attente_validation';
+
+    // Update the service request status
     const { data: updatedData, error: reqError } = await supabase.from('service_requests').update({
-      status: 'devis_recu',
+      status: newStatus,
       garage_response: devisResponse || null,
       valid_until_days: parseInt(devisValidDays) || 30,
     }).eq('id', actionDialog.item.id).select();
@@ -196,20 +203,66 @@ export default function RendezVousPage() {
       }
     }
 
-    toast.success(t('admin.appts.quoteSent'));
-
-    if (actionDialog.item.client?.email) {
-      const itemsSubtotal = validItems.reduce((sum, it) => sum + (parseInt(it.quantity) || 1) * (parseFloat(it.unit_price) || 0), 0);
-      const itemsTotal = itemsSubtotal + Math.round(itemsSubtotal * VAT_RATE) / 100;
-      const email = devisResponseEmail(
-        `${actionDialog.item.client.first_name} ${actionDialog.item.client.last_name}`,
-        actionDialog.item.description,
-        itemsTotal > 0 ? `${itemsTotal.toFixed(2)} CHF` : undefined
-      );
-      sendEmail(actionDialog.item.client.email, email.subject, email.html, email.text);
+    if (isAdmin) {
+      toast.success(t('admin.appts.quoteSent'));
+      if (actionDialog.item.client?.email) {
+        const itemsSubtotal = validItems.reduce((sum, it) => sum + (parseInt(it.quantity) || 1) * (parseFloat(it.unit_price) || 0), 0);
+        const itemsTotal = itemsSubtotal + Math.round(itemsSubtotal * VAT_RATE) / 100;
+        const email = devisResponseEmail(
+          `${actionDialog.item.client.first_name} ${actionDialog.item.client.last_name}`,
+          actionDialog.item.description,
+          itemsTotal > 0 ? `${itemsTotal.toFixed(2)} CHF` : undefined
+        );
+        sendEmail(actionDialog.item.client.email, email.subject, email.html, email.text);
+      }
+    } else {
+      toast.success(t('devis.submittedForApproval'));
     }
     setActionDialog(null);
     fetchData();
+    setSubmitting(false);
+  }
+
+  async function handleApproveDevis(req: any) {
+    setSubmitting(true);
+    const { error } = await supabase.from('service_requests').update({
+      status: 'devis_recu',
+    }).eq('id', req.id);
+    if (error) {
+      toast.error(t('toast.error'), { description: error.message });
+    } else {
+      toast.success(t('admin.appts.quoteSent'));
+      if (req.client?.email) {
+        const items = req.devis_items ?? [];
+        const subtotal = items.reduce((sum: number, it: any) => sum + Number(it.line_total), 0);
+        const total = subtotal + Math.round(subtotal * VAT_RATE) / 100;
+        const email = devisResponseEmail(
+          `${req.client.first_name} ${req.client.last_name}`,
+          req.description,
+          total > 0 ? `${total.toFixed(2)} CHF` : undefined
+        );
+        sendEmail(req.client.email, email.subject, email.html, email.text);
+      }
+      fetchData();
+    }
+    setSubmitting(false);
+  }
+
+  async function handleRejectDevis() {
+    if (!rejectDialog) return;
+    setSubmitting(true);
+    const { error } = await supabase.from('service_requests').update({
+      status: 'en_attente',
+      admin_comment: rejectComment || null,
+    }).eq('id', rejectDialog.item.id);
+    if (error) {
+      toast.error(t('toast.error'), { description: error.message });
+    } else {
+      toast.success(t('devis.rejected'));
+      setRejectDialog(null);
+      setRejectComment('');
+      fetchData();
+    }
     setSubmitting(false);
   }
 
@@ -234,8 +287,9 @@ export default function RendezVousPage() {
   async function handleReactivateDevis(req: any) {
     const newExpiry = new Date();
     newExpiry.setDate(newExpiry.getDate() + (req.valid_until_days ?? 30));
+    const newStatus = profile?.role === 'admin' ? 'devis_recu' : 'en_attente_validation';
     const { error } = await supabase.from('service_requests').update({
-      status: 'devis_recu',
+      status: newStatus,
       expiry_date: newExpiry.toISOString().split('T')[0],
     }).eq('id', req.id);
     if (error) {
@@ -259,7 +313,8 @@ export default function RendezVousPage() {
   const pendingAppts = appointments.filter((a) => a.status === 'en_attente');
   const activeAppts = appointments.filter((a) => a.status === 'confirme' || a.status === 'termine');
   const pendingReqs = requests.filter((r) => r.status === 'en_attente');
-  const processedReqs = requests.filter((r) => r.status !== 'en_attente');
+  const pendingValidationReqs = requests.filter((r) => r.status === 'en_attente_validation');
+  const processedReqs = requests.filter((r) => r.status !== 'en_attente' && r.status !== 'en_attente_validation');
 
   const statusConfig: Record<string, { icon: any; color: string }> = {
     en_attente: { icon: Clock, color: 'text-warning' },
@@ -327,6 +382,56 @@ export default function RendezVousPage() {
           </CardContent>
         </Card>
       </div>
+
+      {pendingValidationReqs.length > 0 && profile?.role === 'admin' && (
+        <Card className="border-warning/30 border-2">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <ShieldAlert className="h-5 w-5 text-warning" />
+              <h3 className="text-sm font-semibold">{t('devis.pendingApproval')} ({pendingValidationReqs.length})</h3>
+            </div>
+            <div className="space-y-3">
+              {pendingValidationReqs.map((req) => {
+                const items = req.devis_items ?? [];
+                const subtotal = items.reduce((sum, it) => sum + Number(it.line_total), 0);
+                const vat = Math.round(subtotal * VAT_RATE) / 100;
+                const total = subtotal + vat;
+                return (
+                  <div key={req.id} className="flex items-start justify-between gap-4 rounded-lg border border-border/40 p-3">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">{req.client ? `${req.client.first_name} ${req.client.last_name}` : '—'}</p>
+                      <p className="text-xs text-muted-foreground max-w-md">{req.description}</p>
+                      {items.length > 0 && (
+                        <div className="mt-1 rounded-md bg-secondary/50 p-2 text-xs">
+                          {items.map((it) => (
+                            <div key={it.id} className="flex justify-between">
+                              <span>{it.description} (x{it.quantity})</span>
+                              <span className="font-medium">{formatCHF(Number(it.line_total))}</span>
+                            </div>
+                          ))}
+                          <Separator className="my-1" />
+                          <div className="flex justify-between font-bold">
+                            <span>{t('invoices.total')}</span>
+                            <span className="text-primary">{formatCHF(total)}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <Button size="sm" onClick={() => handleApproveDevis(req)} disabled={submitting}>
+                        <ShieldCheck className="h-4 w-4 mr-1" /> {t('devis.approve')}
+                      </Button>
+                      <Button size="sm" variant="outline" className="hover:text-destructive" onClick={() => { setRejectDialog({ item: req }); setRejectComment(''); }}>
+                        <XCircle className="h-4 w-4 mr-1" /> {t('devis.reject')}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs defaultValue="appointments">
         <TabsList>
@@ -568,10 +673,10 @@ export default function RendezVousPage() {
                                 </div>
                               </div>
                               <Badge
-                                variant={req.status === 'devis_accepte' ? 'default' : req.status === 'devis_refuse' ? 'destructive' : 'secondary'}
+                                variant={req.status === 'devis_accepte' ? 'default' : req.status === 'devis_refuse' ? 'destructive' : req.status === 'en_attente_validation' ? 'outline' : 'secondary'}
                                 className="text-xs"
                               >
-                                {req.status === 'en_attente' ? t('admin.appts.pending') : req.status === 'devis_recu' ? t('admin.appts.devisSent') : req.status === 'devis_accepte' ? t('devis.status.accepted') : req.status === 'devis_refuse' ? t('devis.status.refused') : DEVIS_STATUS_LABELS[req.status]}
+                                {req.status === 'en_attente' ? t('admin.appts.pending') : req.status === 'devis_recu' ? t('admin.appts.devisSent') : req.status === 'devis_accepte' ? t('devis.status.accepted') : req.status === 'devis_refuse' ? t('devis.status.refused') : req.status === 'en_attente_validation' ? t('devis.pendingApproval') : DEVIS_STATUS_LABELS[req.status]}
                               </Badge>
                             </div>
                           </CardContent>
@@ -769,10 +874,38 @@ export default function RendezVousPage() {
               <Button type="button" variant="outline" onClick={() => setActionDialog(null)}>{t('common.cancel')}</Button>
               <Button type="submit" disabled={submitting}>
                 {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                {t('admin.appts.sendQuote')}
+                {profile?.role === 'admin' ? t('admin.appts.sendQuote') : t('devis.submitForApproval')}
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject devis dialog */}
+      <Dialog open={!!rejectDialog} onOpenChange={(open) => { if (!open) { setRejectDialog(null); setRejectComment(''); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('devis.rejectTitle')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">{t('devis.rejectDesc')}</p>
+            <div className="space-y-2">
+              <Label htmlFor="reject-comment">{t('devis.rejectComment')}</Label>
+              <Textarea
+                id="reject-comment"
+                placeholder={t('devis.rejectCommentPlaceholder')}
+                value={rejectComment}
+                onChange={(e) => setRejectComment(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setRejectDialog(null); setRejectComment(''); }}>{t('common.cancel')}</Button>
+            <Button variant="destructive" onClick={handleRejectDevis} disabled={submitting}>
+              {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              {t('devis.reject')}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
