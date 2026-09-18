@@ -98,7 +98,13 @@ export default function EquipePage() {
       return;
     }
 
-    setCreatedPassword(data as string);
+    const password = Array.isArray(data) ? data[0]?.temp_password : (data as any)?.temp_password;
+    if (!password) {
+      toast.error(t('team.createError'), { description: 'No password returned' });
+      setSubmitting(false);
+      return;
+    }
+    setCreatedPassword(password);
     toast.success(t('team.addedToast'));
     setDialogOpen(false);
     setNewMember({ email: '', full_name: '', role: 'mecanicien', phone: '' });
@@ -117,7 +123,13 @@ export default function EquipePage() {
       setResetSubmitting(false);
       return;
     }
-    setResetPassword(data as string);
+    const password = Array.isArray(data) ? data[0]?.temp_password : (data as any)?.temp_password;
+    if (!password) {
+      toast.error(t('team.resetError'), { description: 'No password returned' });
+      setResetSubmitting(false);
+      return;
+    }
+    setResetPassword(password);
     setResetSubmitting(false);
   }
 
@@ -375,7 +387,7 @@ export default function EquipePage() {
 
       {/* Add member dialog */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) setCreatedPassword(null); }}>
-        <DialogContent>
+        <DialogContent onInteractOutside={(e) => { if (createdPassword) e.preventDefault(); }}>
           {createdPassword ? (
             <>
               <DialogHeader>
@@ -488,7 +500,7 @@ export default function EquipePage() {
 
       {/* Reset password dialog */}
       <Dialog open={!!resetTarget} onOpenChange={(open) => { if (!open) { setResetTarget(null); setResetPassword(null); } }}>
-        <DialogContent>
+        <DialogContent onInteractOutside={(e) => { if (resetPassword) e.preventDefault(); }}>
           {resetTarget && (
             <>
               <DialogHeader>
