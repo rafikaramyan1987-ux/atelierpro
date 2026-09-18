@@ -54,6 +54,7 @@ export interface Profile {
 
 export interface Client {
   id: string;
+  garage_id: string | null;
   company_name: string | null;
   first_name: string;
   last_name: string;
@@ -70,6 +71,7 @@ export interface Client {
 export interface Vehicle {
   id: string;
   client_id: string;
+  garage_id: string | null;
   brand: string;
   model: string;
   license_plate: string;
@@ -85,6 +87,7 @@ export interface Vehicle {
 
 export interface Part {
   id: string;
+  garage_id: string | null;
   reference: string;
   name: string;
   description: string | null;
@@ -102,6 +105,7 @@ export interface Invoice {
   invoice_number: string;
   client_id: string;
   vehicle_id: string | null;
+  garage_id: string | null;
   status: InvoiceStatus;
   subtotal: number;
   vat_rate: number;
@@ -126,6 +130,7 @@ export interface Invoice {
 export interface InvoiceItem {
   id: string;
   invoice_id: string;
+  garage_id: string | null;
   part_id: string | null;
   description: string;
   quantity: number;
@@ -137,6 +142,7 @@ export interface InvoiceItem {
 export interface TwintPayment {
   id: string;
   invoice_id: string;
+  garage_id: string | null;
   amount: number;
   status: TwintPaymentStatus;
   twint_transaction_id: string | null;
@@ -195,6 +201,7 @@ export interface ServiceRequest {
 export interface DevisItem {
   id: string;
   devis_id: string;
+  garage_id: string | null;
   description: string;
   quantity: number;
   unit_price: number;
@@ -357,6 +364,7 @@ export interface RepairOrder {
 export interface RepairOrderItem {
   id: string;
   repair_order_id: string;
+  garage_id: string | null;
   description: string;
   quantity: number;
   unit_price: number;
@@ -379,6 +387,7 @@ export interface LoanerVehicle {
 export interface LoanerAssignment {
   id: string;
   loaner_vehicle_id: string;
+  garage_id: string | null;
   client_id: string | null;
   appointment_id: string | null;
   repair_order_id: string | null;

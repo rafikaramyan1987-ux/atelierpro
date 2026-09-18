@@ -147,6 +147,7 @@ export default function RepairOrdersPage() {
 
     const items = (devis.devis_items ?? []).map((item: any) => ({
       repair_order_id: newOR.id,
+      garage_id: profile?.garage_id ?? null,
       description: item.description,
       quantity: item.quantity,
       unit_price: item.unit_price,
@@ -165,6 +166,7 @@ export default function RepairOrdersPage() {
     if (extraItems.length > 0) {
       const extraPayload = extraItems.map((it) => ({
         repair_order_id: newOR.id,
+        garage_id: profile?.garage_id ?? null,
         description: it.description,
         quantity: it.quantity,
         unit_price: it.unit_price,
@@ -227,6 +229,7 @@ export default function RepairOrdersPage() {
       invoice_number: invoiceNumber,
       client_id: convertDialog.client_id,
       vehicle_id: convertDialog.vehicle_id,
+      garage_id: profile?.garage_id ?? null,
       status: 'brouillon',
       subtotal: Math.round(subtotal * 100) / 100,
       vat_rate: VAT_RATE,
@@ -246,6 +249,7 @@ export default function RepairOrdersPage() {
     if (items.length > 0) {
       const itemPayload = items.map((it) => ({
         invoice_id: invoice.id,
+        garage_id: profile?.garage_id ?? null,
         description: it.description,
         quantity: it.quantity,
         unit_price: it.unit_price,
@@ -784,6 +788,7 @@ export default function RepairOrdersPage() {
                           <Button size="sm" variant="outline" onClick={async () => {
                             const { error } = await supabase.from('loaner_assignments').insert({
                               loaner_vehicle_id: selectedLoanerId,
+                              garage_id: profile?.garage_id ?? null,
                               client_id: detailsDialog.client_id,
                               repair_order_id: detailsDialog.id,
                               start_date: loanerStartDate,

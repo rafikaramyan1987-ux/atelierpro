@@ -130,6 +130,7 @@ export default function NewInvoicePage() {
       invoice_number: invoiceNumber,
       client_id: clientId,
       vehicle_id: vehicleId || null,
+      garage_id: profile?.garage_id ?? null,
       status: actualStatus,
       subtotal: Math.round(subtotal * 100) / 100,
       vat_rate: VAT_RATE,
@@ -151,6 +152,7 @@ export default function NewInvoicePage() {
 
     const itemPayload = items.map((item) => ({
       invoice_id: invoice.id,
+      garage_id: profile?.garage_id ?? null,
       part_id: item.part_id || null,
       description: item.description,
       quantity: parseFloat(item.quantity) || 1,

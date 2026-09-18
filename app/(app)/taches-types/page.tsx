@@ -128,7 +128,7 @@ export default function CannedTasksPage() {
         fetchData();
       }
     } else {
-      const { error } = await supabase.from('canned_tasks').insert(payload);
+      const { error } = await supabase.from('canned_tasks').insert({ ...payload, garage_id: profile?.garage_id ?? null });
       if (error) {
         toast.error(t('toast.error'), { description: error.message });
       } else {

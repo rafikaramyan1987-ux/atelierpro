@@ -189,6 +189,7 @@ export default function RendezVousPage() {
     if (validItems.length > 0) {
       const itemsToInsert = validItems.map((it) => ({
         devis_id: actionDialog.item.id,
+        garage_id: profile?.garage_id ?? null,
         description: it.description,
         quantity: parseInt(it.quantity) || 1,
         unit_price: parseFloat(it.unit_price) || 0,

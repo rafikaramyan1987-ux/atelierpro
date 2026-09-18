@@ -8,6 +8,7 @@ import { AppSidebar } from '@/components/app-sidebar';
 import { Loader2 } from 'lucide-react';
 
 const PASSWORD_CHANGE_PATH = '/changer-mot-de-passe';
+const GARAGE_SETUP_PATH = '/mon-garage';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, profile, loading } = useAuth();
@@ -23,10 +24,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       } else if (profile && isGarageStaff(profile.role)) {
         if (profile.must_change_password && pathname !== PASSWORD_CHANGE_PATH) {
           router.push(PASSWORD_CHANGE_PATH);
-        } else if (!profile.must_change_password && pathname === PASSWORD_CHANGE_PATH) {
-          router.push('/dashboard');
-        } else if (!profile.must_change_password && !canAccess(profile.role, pathname)) {
-          router.push('/dashboard');
+        } else if (!profile.must_change_password) {
+          if (pathname === PASSWORD_CHANGE_PATH) {
+            router.push('/dashboard');
+          } else if (!profile.garage_id && pathname !== GARAGE_SETUP_PATH) {
+            router.push(GARAGE_SETUP_PATH);
+          } else if (profile.garage_id && !canAccess(profile.role, pathname)) {
+            router.push('/dashboard');
+          }
         }
       }
     }
@@ -52,6 +57,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
       <div className="min-h-screen bg-background">
         {children}
+      </div>
+    );
+  }
+
+  if (!profile.garage_id && pathname === GARAGE_SETUP_PATH) {
+    return (
+      <div className="min-h-screen bg-background">
+        {children}
+      </div>
+    );
+  }
+
+  if (!profile.garage_id) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
