@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'mecanicien' | 'secretaire' | 'client';
+export type UserRole = 'super_admin' | 'admin' | 'mecanicien' | 'secretaire' | 'client';
 
 export type InvoiceStatus = 'brouillon' | 'envoyee' | 'payee' | 'en_retard' | 'en_attente_validation';
 export type PaymentMethod = 'twint' | 'especes' | 'carte' | 'virement' | 'qr_bill';
@@ -13,7 +13,12 @@ export const GARAGE_ROLES: UserRole[] = ['admin', 'mecanicien', 'secretaire'];
 export const isGarageStaff = (role: UserRole | null | undefined): boolean =>
   !!role && GARAGE_ROLES.includes(role);
 
+const PASSWORD_CHANGE_ROUTE = 'changer-mot-de-passe';
+
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
+  super_admin: [
+    'admin',
+  ],
   admin: [
     'dashboard', 'mes-interventions', 'rendez-vous', 'ordres-reparation', 'planning',
     'factures', 'paiements', 'clients', 'stock', 'commandes-pieces',
@@ -34,8 +39,9 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
 
 export function canAccess(role: UserRole | null | undefined, path: string): boolean {
   if (!role) return false;
-  const perms = ROLE_PERMISSIONS[role] ?? [];
   const basePath = path.replace(/^\//, '').split('/')[0];
+  if (basePath === PASSWORD_CHANGE_ROUTE) return true;
+  const perms = ROLE_PERMISSIONS[role] ?? [];
   return perms.includes(basePath);
 }
 
@@ -226,6 +232,8 @@ export interface Garage {
   review_count: number;
   commission_rate: number;
   gardiennage_enabled: boolean;
+  subscription_status: 'active' | 'suspended' | 'trial';
+  subscription_updated_at: string | null;
   created_at: string;
 }
 
@@ -291,6 +299,7 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
 };
 
 export const ROLE_LABELS: Record<UserRole, string> = {
+  super_admin: 'Super Administrateur',
   admin: 'Administrateur',
   mecanicien: 'Mécanicien',
   secretaire: 'Secrétaire',

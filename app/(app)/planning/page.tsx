@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
+import { useAuth } from '@/lib/auth-context';
 import {
   TIME_SLOTS,
   type Appointment,
@@ -62,6 +63,7 @@ interface PlanningItem {
 
 export default function PlanningPage() {
   const { t } = useI18n();
+  const { profile } = useAuth();
   const [view, setView] = useState<'day' | 'week'>('day');
   const [groupBy, setGroupBy] = useState<'mechanic' | 'workspace'>('mechanic');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -73,9 +75,10 @@ export default function PlanningPage() {
   const [reassignTo, setReassignTo] = useState('');
 
   const fetchData = useCallback(async () => {
+    if (!profile?.garage_id) return;
     setLoading(true);
     const [mechRes, apptRes, orRes] = await Promise.all([
-      supabase.from('profiles').select('*').in('role', ['admin', 'mecanicien']).eq('active', true),
+      supabase.from('profiles').select('*').in('role', ['admin', 'mecanicien']).eq('active', true).eq('garage_id', profile.garage_id),
       supabase.from('appointments').select('*, client:clients(*), vehicle:vehicles(*)').in('status', ['confirme', 'termine']).order('scheduled_date'),
       supabase.from('repair_orders').select('*, client:clients(*), vehicle:vehicles(*), assigned_mechanic:profiles!assigned_mechanic_id(*)').in('status', ['en_cours', 'termine']).order('created_at'),
     ]);
@@ -83,7 +86,7 @@ export default function PlanningPage() {
     setAppointments(apptRes.data as any ?? []);
     setOrders(orRes.data as any ?? []);
     setLoading(false);
-  }, []);
+  }, [profile?.garage_id]);
 
   useEffect(() => {
     fetchData();

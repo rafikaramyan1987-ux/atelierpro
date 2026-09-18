@@ -92,7 +92,7 @@ export default function RendezVousPage() {
     const [apptRes, reqRes, mechRes, tasksRes] = await Promise.all([
       supabase.from('appointments').select('*, client:clients(*), vehicle:vehicles(*)').order('created_at', { ascending: false }),
       supabase.from('service_requests').select('*, client:clients(*), vehicle:vehicles(*), devis_items(*)').order('created_at', { ascending: false }),
-      supabase.from('profiles').select('*').in('role', ['admin', 'mecanicien']).eq('active', true),
+      supabase.from('profiles').select('*').in('role', ['admin', 'mecanicien']).eq('active', true).eq('garage_id', profile?.garage_id ?? ''),
       supabase.from('canned_tasks').select('*').order('name', { ascending: true }),
     ]);
     setAppointments(apptRes.data as any ?? []);

@@ -94,7 +94,7 @@ export default function DashboardPage() {
       supabase.from('invoices').select('*, client:clients(first_name, last_name)').order('created_at', { ascending: false }).limit(10),
       supabase.from('clients').select('id', { count: 'exact', head: true }),
       supabase.from('parts').select('*').order('stock_quantity', { ascending: true }),
-      supabase.from('profiles').select('*').in('role', ['admin', 'mecanicien', 'secretaire']).order('created_at', { ascending: false }),
+      supabase.from('profiles').select('*').in('role', ['admin', 'mecanicien', 'secretaire']).eq('garage_id', profile?.garage_id ?? '').order('created_at', { ascending: false }),
       supabase.from('canned_tasks').select('id', { count: 'exact', head: true }).not('interval_months', 'is', null),
       supabase.from('service_requests').select('id', { count: 'exact', head: true }).eq('status', 'en_attente_validation'),
     ]);

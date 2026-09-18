@@ -90,10 +90,8 @@ export default function ClientDevisPage() {
     } else {
       toast.success(t('devis.toast.sent'), { description: t('devis.toast.sentDesc') });
 
-      const { data: staffProfiles } = await supabase.from('profiles').select('email').in('role', ['admin', 'mecanicien']).eq('active', true);
-      const vehicleLabel = vehicles.find((v) => v.id === form.vehicle_id);
-      const email = newDevisEmail(profile?.full_name || 'Client', form.description, vehicleLabel ? `${vehicleLabel.brand} ${vehicleLabel.model} — ${vehicleLabel.license_plate}` : undefined);
-      (staffProfiles as any[] ?? []).forEach((p) => { if (p.email) sendEmail(p.email, email.subject, email.html, email.text); });
+      // Staff notification removed: these are general client requests not tied
+      // to a specific garage. Garage staff see new requests in their dashboard.
       setDialogOpen(false);
       setForm({ vehicle_id: '', description: '' });
       fetchData();

@@ -85,20 +85,23 @@ export default function EquipePage() {
     e.preventDefault();
     setSubmitting(true);
 
-    const { data, error } = await supabase.rpc('create_employee', {
-      p_email: newMember.email,
-      p_full_name: newMember.full_name,
-      p_role: newMember.role,
-      p_phone: newMember.phone || '',
+    const { data: respData, error: fetchError } = await supabase.functions.invoke('manage-employee', {
+      body: {
+        action: 'create',
+        email: newMember.email,
+        full_name: newMember.full_name,
+        role: newMember.role,
+        phone: newMember.phone || '',
+      },
     });
 
-    if (error) {
-      toast.error(t('team.createError'), { description: error.message });
+    if (fetchError) {
+      toast.error(t('team.createError'), { description: fetchError.message });
       setSubmitting(false);
       return;
     }
 
-    const password = Array.isArray(data) ? data[0]?.temp_password : (data as any)?.temp_password;
+    const password = respData?.temp_password;
     if (!password) {
       toast.error(t('team.createError'), { description: 'No password returned' });
       setSubmitting(false);
@@ -115,15 +118,18 @@ export default function EquipePage() {
   async function handleResetPassword() {
     if (!resetTarget) return;
     setResetSubmitting(true);
-    const { data, error } = await supabase.rpc('reset_employee_password', {
-      p_target_user_id: resetTarget.id,
+    const { data: respData, error: fetchError } = await supabase.functions.invoke('manage-employee', {
+      body: {
+        action: 'reset_password',
+        target_user_id: resetTarget.id,
+      },
     });
-    if (error) {
-      toast.error(t('team.resetError'), { description: error.message });
+    if (fetchError) {
+      toast.error(t('team.resetError'), { description: fetchError.message });
       setResetSubmitting(false);
       return;
     }
-    const password = Array.isArray(data) ? data[0]?.temp_password : (data as any)?.temp_password;
+    const password = respData?.temp_password;
     if (!password) {
       toast.error(t('team.resetError'), { description: 'No password returned' });
       setResetSubmitting(false);

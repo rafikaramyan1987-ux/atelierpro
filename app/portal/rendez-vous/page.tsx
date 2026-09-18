@@ -113,10 +113,8 @@ export default function ClientRendezVousPage() {
     } else {
       toast.success(t('toast.apptRequested'), { description: t('toast.apptRequestedDesc') });
 
-      const { data: staffProfiles } = await supabase.from('profiles').select('email').in('role', ['admin', 'mecanicien']).eq('active', true);
-      const vehicleLabel = vehicles.find((v) => v.id === form.vehicle_id);
-      const email = newAppointmentEmail(profile?.full_name || 'Client', form.service_type, form.requested_date, form.requested_time, vehicleLabel ? `${vehicleLabel.brand} ${vehicleLabel.model} — ${vehicleLabel.license_plate}` : undefined);
-      (staffProfiles as any[] ?? []).forEach((p) => { if (p.email) sendEmail(p.email, email.subject, email.html, email.text); });
+      // Staff notification removed: these are general client requests not tied
+      // to a specific garage. Garage staff see new requests in their dashboard.
       setDialogOpen(false);
       setForm({ vehicle_id: '', requested_date: '', requested_time: '09:00', service_type: 'Vidange', description: '' });
       fetchData();

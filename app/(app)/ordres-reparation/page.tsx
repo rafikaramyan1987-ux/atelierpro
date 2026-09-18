@@ -94,7 +94,7 @@ export default function RepairOrdersPage() {
     const [orRes, devisRes, mechRes, lvRes, laRes, tasksRes] = await Promise.all([
       supabase.from('repair_orders').select('*, client:clients(*), vehicle:vehicles(*), assigned_mechanic:profiles!assigned_mechanic_id(*), repair_order_items(*), service_request:service_requests(*)').order('created_at', { ascending: false }),
       supabase.from('service_requests').select('*, client:clients(*), vehicle:vehicles(*), devis_items(*)').eq('status', 'devis_accepte').order('created_at', { ascending: false }),
-      supabase.from('profiles').select('*').in('role', ['admin', 'mecanicien']).eq('active', true),
+      supabase.from('profiles').select('*').in('role', ['admin', 'mecanicien']).eq('active', true).eq('garage_id', profile?.garage_id ?? ''),
       supabase.from('loaner_vehicles').select('*').eq('status', 'available').order('make'),
       supabase.from('loaner_assignments').select('*, loaner_vehicle:loaner_vehicles(*), client:clients(*)').eq('status', 'active'),
       supabase.from('canned_tasks').select('*').order('name', { ascending: true }),
