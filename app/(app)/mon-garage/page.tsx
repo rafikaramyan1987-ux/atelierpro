@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/auth-context';
 import { useI18n } from '@/lib/i18n/context';
@@ -15,14 +16,23 @@ import { Wrench, Save, Loader2, MapPin, Phone, Mail, Star, CheckCircle2, Store, 
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
+const SERVICE_KEY: Record<string, string> = {
+  'Vidange': 'service.vidange', 'Freinage': 'service.freinage', 'Pneus': 'service.pneus',
+  'Diagnostic': 'service.diagnostic', 'Révision générale': 'service.revision',
+  'Suspension': 'service.suspension', 'Électricité': 'service.electricite',
+  'Carrosserie': 'service.carrosserie', 'Autre': 'service.autre',
+};
+
 export default function MonGaragePage() {
   const { profile, createGarageAsAdmin } = useAuth();
   const { t } = useI18n();
+  const router = useRouter();
 
   const [garage, setGarage] = useState<Garage | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [justCreated, setJustCreated] = useState(false);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -58,6 +68,9 @@ export default function MonGaragePage() {
         setLogoUrl(data.logo_url || '');
         setServices(data.services_offered || []);
         setGardiennageEnabled((data as any).gardiennage_enabled ?? false);
+        if (!data.address || !data.city) {
+          setJustCreated(true);
+        }
       }
       setLoading(false);
     }
@@ -94,6 +107,10 @@ export default function MonGaragePage() {
     } else {
       toast.success(t('garageProfile.toast.saved'));
       setGarage({ ...garage, name, description, address, city, postal_code: postalCode, phone, email, logo_url: logoUrl, services_offered: services, gardiennage_enabled: gardiennageEnabled } as Garage);
+      if (justCreated) {
+        setJustCreated(false);
+        router.push('/dashboard');
+      }
     }
     setSaving(false);
   }
@@ -111,6 +128,8 @@ export default function MonGaragePage() {
       setCreating(false);
       return;
     }
+
+    setJustCreated(true);
 
     const { data: garageData } = await supabase
       .from('garages')
@@ -217,7 +236,7 @@ export default function MonGaragePage() {
                           : 'border-border bg-secondary text-muted-foreground hover:bg-secondary/80'
                       )}
                     >
-                      {t(`service.${service.toLowerCase().replace(/[éè]/g, 'e').replace(' ', '')}`) || service}
+                      {SERVICE_KEY[service] ? t(SERVICE_KEY[service]) : service}
                     </button>
                   ))}
                 </div>
