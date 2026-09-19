@@ -1,6 +1,6 @@
 export type UserRole = 'super_admin' | 'admin' | 'mecanicien' | 'secretaire' | 'client';
 
-export type InvoiceStatus = 'brouillon' | 'envoyee' | 'payee' | 'en_retard' | 'en_attente_validation';
+export type InvoiceStatus = 'brouillon' | 'envoyee' | 'payee' | 'en_retard' | 'en_attente_validation' | 'paiement_declare';
 export type PaymentMethod = 'twint' | 'especes' | 'carte' | 'virement' | 'qr_bill';
 export type TwintPaymentStatus = 'en_attente' | 'confirmee' | 'echouee' | 'remboursee';
 
@@ -288,6 +288,7 @@ export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
   payee: 'Payée',
   en_retard: 'En retard',
   en_attente_validation: 'En attente de validation',
+  paiement_declare: 'Paiement déclaré',
 };
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {

@@ -9,16 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -51,17 +45,37 @@ export default function ClientDevisPage() {
   const [form, setForm] = useState({
     vehicle_id: '',
     description: '',
+    garage_id: '',
   });
+
+  const [garages, setGarages] = useState<{ id: string; name: string }[]>([]);
 
   const fetchData = useCallback(async () => {
     if (!profile?.client_id) return;
     setLoading(true);
-    const [vRes, rRes] = await Promise.all([
+    const [vRes, rRes, gRes] = await Promise.all([
       supabase.from('vehicles').select('*').eq('client_id', profile.client_id).order('created_at', { ascending: false }),
       supabase.from('service_requests').select('*, vehicle:vehicles(*), devis_items(*)').eq('client_id', profile.client_id).order('created_at', { ascending: false }),
+      supabase.from('garages').select('id, name').order('name'),
     ]);
     setVehicles(vRes.data as Vehicle[] ?? []);
     setRequests(rRes.data as any ?? []);
+    setGarages(gRes.data ?? []);
+
+    // Default garage: client's most recent appointment's garage
+    if (!form.garage_id) {
+      const { data: lastAppt } = await supabase
+        .from('appointments')
+        .select('garage_id')
+        .eq('client_id', profile.client_id)
+        .not('garage_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (lastAppt?.garage_id) {
+        setForm((f) => ({ ...f, garage_id: lastAppt.garage_id }));
+      }
+    }
     setLoading(false);
   }, [profile?.client_id]);
 
@@ -76,6 +90,10 @@ export default function ClientDevisPage() {
       toast.error(t('devis.descRequired'));
       return;
     }
+    if (!form.garage_id) {
+      toast.error(t('devis.garageRequired'));
+      return;
+    }
     setSubmitting(true);
 
     const { error } = await supabase.from('service_requests').insert({
@@ -83,30 +101,28 @@ export default function ClientDevisPage() {
       vehicle_id: form.vehicle_id || null,
       type: 'demande_devis',
       description: form.description,
+      garage_id: form.garage_id,
     });
 
     if (error) {
       toast.error(t('toast.error'), { description: error.message });
     } else {
       toast.success(t('devis.toast.sent'), { description: t('devis.toast.sentDesc') });
-
-      // Staff notification removed: these are general client requests not tied
-      // to a specific garage. Garage staff see new requests in their dashboard.
       setDialogOpen(false);
-      setForm({ vehicle_id: '', description: '' });
+      setForm({ vehicle_id: '', description: '', garage_id: form.garage_id });
       fetchData();
     }
     setSubmitting(false);
   }
 
   async function handleAcceptDevis(reqId: string) {
-    const { data: updatedData, error } = await supabase.from('service_requests').update({ status: 'devis_accepte' }).eq('id', reqId).select();
+    const { error } = await supabase.rpc('client_respond_devis', {
+      p_request_id: reqId,
+      p_accept: true,
+      p_signature: null,
+    });
     if (error) {
       toast.error(t('toast.error'), { description: error.message });
-      return;
-    }
-    if (!updatedData || updatedData.length === 0) {
-      toast.error(t('toast.error'), { description: 'Update failed (permission denied or record not found)' });
       return;
     }
     toast.success(t('devis.toast.accepted'), { description: t('devis.toast.acceptedDesc') });
@@ -115,13 +131,12 @@ export default function ClientDevisPage() {
   }
 
   async function handleRefuseDevis(reqId: string) {
-    const { data: updatedData, error } = await supabase.from('service_requests').update({ status: 'devis_refuse' }).eq('id', reqId).select();
+    const { error } = await supabase.rpc('client_respond_devis', {
+      p_request_id: reqId,
+      p_accept: false,
+    });
     if (error) {
       toast.error(t('toast.error'), { description: error.message });
-      return;
-    }
-    if (!updatedData || updatedData.length === 0) {
-      toast.error(t('toast.error'), { description: 'Update failed (permission denied or record not found)' });
       return;
     }
     toast.success(t('devis.toast.refused'));
@@ -290,13 +305,12 @@ export default function ClientDevisPage() {
               )}
               <SignaturePad
                 onSave={async (dataUrl) => {
-                  const { data: sigData, error } = await supabase.from('service_requests').update({
-                    signature_data: dataUrl,
-                    signature_date: new Date().toISOString(),
-                    status: 'devis_accepte',
-                  }).eq('id', detailDevis.id).select();
+                  const { error } = await supabase.rpc('client_respond_devis', {
+                    p_request_id: detailDevis.id,
+                    p_accept: true,
+                    p_signature: dataUrl,
+                  });
                   if (error) { toast.error(t('toast.error'), { description: error.message }); return; }
-                  if (!sigData || sigData.length === 0) { toast.error(t('toast.error'), { description: 'Update failed (permission denied)' }); return; }
                   toast.success(t('sig.saved'), { description: t('sig.savedDesc') });
                   toast.success(t('devis.toast.accepted'), { description: t('devis.toast.acceptedDesc') });
                   setDetailDevis(null);
@@ -314,6 +328,23 @@ export default function ClientDevisPage() {
             <DialogTitle>{t('devis.new')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="devis-garage">{t('devis.garage')} *</Label>
+              {garages.length > 0 ? (
+                <Select value={form.garage_id || 'none'} onValueChange={(v) => setForm({ ...form, garage_id: v === 'none' ? '' : v })}>
+                  <SelectTrigger id="devis-garage">
+                    <SelectValue placeholder={t('devis.selectGarage')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {garages.map((g) => (
+                      <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <a href="/portal/garages" className="text-sm text-primary underline">{t('devis.findGarage')}</a>
+              )}
+            </div>
             <div className="space-y-2">
               <Label htmlFor="devis-vehicle">{t('devis.vehicle')}</Label>
               <Select value={form.vehicle_id || 'none'} onValueChange={(v) => setForm({ ...form, vehicle_id: v === 'none' ? '' : v })}>

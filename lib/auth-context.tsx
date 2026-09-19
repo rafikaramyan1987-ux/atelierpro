@@ -68,6 +68,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return fetchProfile(userId, retries + 1);
     }
 
+    // First-login client registration: if the user signed up as a client
+    // but email confirmation was on, the register_client call was deferred.
+    // Check for pending registration data in localStorage.
+    if (data && data.role === 'mecanicien' && !data.garage_id && !data.client_id) {
+      const pendingReg = localStorage.getItem('pending_client_registration');
+      if (pendingReg) {
+        try {
+          const reg = JSON.parse(pendingReg);
+          if (reg.email === data.email) {
+            const { error: regError } = await supabase.rpc('register_client', {
+              p_first_name: reg.first_name,
+              p_last_name: reg.last_name,
+              p_phone: reg.phone,
+              p_brand: reg.brand || null,
+              p_model: reg.model || null,
+              p_plate: reg.plate || null,
+            });
+            if (!regError) {
+              localStorage.removeItem('pending_client_registration');
+              const { data: updatedProfile } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', userId)
+                .maybeSingle();
+              if (updatedProfile) {
+                setProfile(updatedProfile as Profile);
+                setLoading(false);
+                return;
+              }
+            }
+          }
+        } catch {
+          // Ignore parse errors
+        }
+      }
+    }
+
     setProfile(data as Profile | null);
     setLoading(false);
   }
@@ -88,32 +125,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // The trigger creates a minimal profile (email as name, role=mecanicien).
-    // We need to update it with the correct full_name and role.
-    // For client signups, also link the client_id.
+    // We only update the full_name here. Role and client_id are set by
+    // register_client or create_garage_as_admin (SECURITY DEFINER functions).
     if (data.user) {
-      // Wait briefly for the trigger to create the profile row
       await new Promise((r) => setTimeout(r, 500));
-
-      const updateData: Record<string, string> = {
-        full_name: fullName,
-        role,
-      };
-      if (clientId) {
-        updateData.client_id = clientId;
-      }
 
       await supabase
         .from('profiles')
-        .update(updateData)
+        .update({ full_name: fullName })
         .eq('id', data.user.id);
-
-      // If this is a client registration, link the client record
-      if (role === 'client' && clientId) {
-        await supabase
-          .from('clients')
-          .update({ auth_user_id: data.user.id })
-          .eq('id', clientId);
-      }
     }
 
     return { error: null, session: data.session ?? null, user: data.user ?? null };

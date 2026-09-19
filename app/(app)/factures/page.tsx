@@ -92,6 +92,19 @@ export default function FacturesPage() {
     }
   }
 
+  async function handleConfirmPayment(invoice: Invoice) {
+    const { error } = await supabase.from('invoices').update({
+      status: 'payee',
+      paid_date: new Date().toISOString().split('T')[0],
+    }).eq('id', invoice.id);
+    if (error) {
+      toast.error(t('toast.error'), { description: error.message });
+    } else {
+      toast.success(t('invoices.paymentConfirmed'));
+      fetchInvoices();
+    }
+  }
+
   async function handleExportCSV() {
     setExporting(true);
     try {
@@ -183,7 +196,7 @@ export default function FacturesPage() {
 
   const totalAmount = invoices.reduce((sum, inv) => sum + Number(inv.total), 0);
   const paidAmount = invoices.filter((i) => i.status === 'payee').reduce((sum, inv) => sum + Number(inv.total), 0);
-  const pendingAmount = invoices.filter((i) => i.status === 'envoyee').reduce((sum, inv) => sum + Number(inv.total), 0);
+  const pendingAmount = invoices.filter((i) => i.status === 'envoyee' || i.status === 'paiement_declare').reduce((sum, inv) => sum + Number(inv.total), 0);
 
   return (
     <div className="p-6 space-y-6">
@@ -259,6 +272,7 @@ export default function FacturesPage() {
             <SelectItem value="en_attente_validation">{t('invoices.pendingValidation')}</SelectItem>
             <SelectItem value="payee">{t('invoices.paid')}</SelectItem>
             <SelectItem value="en_retard">{t('invoices.late')}</SelectItem>
+            <SelectItem value="paiement_declare">{t('invoices.paymentDeclared')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -307,12 +321,13 @@ export default function FacturesPage() {
                           invoice.status === 'payee' ? 'default'
                           : invoice.status === 'en_retard' ? 'destructive'
                           : invoice.status === 'envoyee' ? 'secondary'
+                          : invoice.status === 'paiement_declare' ? 'outline'
                           : invoice.status === 'en_attente_validation' ? 'outline'
                           : 'outline'
                         }
                         className="text-xs"
                       >
-                        {invoice.status === 'brouillon' ? t('invoices.draft') : invoice.status === 'envoyee' ? t('invoices.unpaid') : invoice.status === 'payee' ? t('invoices.paid') : invoice.status === 'en_retard' ? t('invoices.late') : invoice.status === 'en_attente_validation' ? t('invoices.pendingValidation') : INVOICE_STATUS_LABELS[invoice.status]}
+                        {invoice.status === 'brouillon' ? t('invoices.draft') : invoice.status === 'envoyee' ? t('invoices.unpaid') : invoice.status === 'payee' ? t('invoices.paid') : invoice.status === 'en_retard' ? t('invoices.late') : invoice.status === 'en_attente_validation' ? t('invoices.pendingValidation') : invoice.status === 'paiement_declare' ? t('invoices.paymentDeclared') : INVOICE_STATUS_LABELS[invoice.status]}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
@@ -323,6 +338,11 @@ export default function FacturesPage() {
                         {invoice.status === 'en_attente_validation' && (profile?.role === 'admin' || profile?.role === 'secretaire') && (
                           <Button variant="ghost" size="icon" title={t('invList.issueInvoice')} onClick={() => handleIssueInvoice(invoice)}>
                             <Send className="h-4 w-4 text-primary" />
+                          </Button>
+                        )}
+                        {invoice.status === 'paiement_declare' && (profile?.role === 'admin' || profile?.role === 'secretaire') && (
+                          <Button variant="outline" size="sm" onClick={() => handleConfirmPayment(invoice)}>
+                            {t('invoices.confirmPayment')}
                           </Button>
                         )}
                         <Button variant="ghost" size="icon" onClick={() => router.push(`/factures/${invoice.id}`)}>

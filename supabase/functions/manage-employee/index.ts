@@ -62,7 +62,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: callerProfile, error: profileError } = await adminClient
       .from("profiles")
-      .select("role, garage_id")
+      .select("role, garage_id, active")
       .eq("id", callerId)
       .maybeSingle();
 
@@ -71,6 +71,9 @@ Deno.serve(async (req: Request) => {
     }
     if (!callerProfile) {
       return jsonError(403, "caller profile not found");
+    }
+    if (callerProfile.active === false) {
+      return jsonError(403, "account disabled", "Your account has been disabled");
     }
     if (callerProfile.role !== "admin") {
       return jsonError(403, "not authorized", "Only garage admins can manage employees");

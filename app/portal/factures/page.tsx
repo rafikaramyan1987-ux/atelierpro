@@ -88,16 +88,15 @@ export default function ClientInvoicesPage() {
   async function handlePay(method: PaymentMethod) {
     if (!payInvoice) return;
     setPaying(true);
-    const { error } = await supabase.from('invoices').update({
-      status: 'payee',
-      paid_date: new Date().toISOString().split('T')[0],
-      payment_method: method,
-    }).eq('id', payInvoice.id);
+    const { error } = await supabase.rpc('client_declare_payment', {
+      p_invoice_id: payInvoice.id,
+      p_method: method,
+    });
 
     if (error) {
       toast.error(t('toast.error'), { description: error.message });
     } else {
-      toast.success(t('toast.paymentSaved'), { description: `${t('invoices.paidVia')} ${method === 'qr_bill' ? t('invoices.qrBill') : method === 'carte' ? t('invoices.card') : t('invoices.twint')}` });
+      toast.success(t('toast.paymentDeclared'), { description: `${t('invoices.paidVia')} ${method === 'qr_bill' ? t('invoices.qrBill') : method === 'carte' ? t('invoices.card') : t('invoices.twint')}` });
       setPayDialogOpen(false);
       setPayInvoice(null);
       // Refresh invoices
@@ -118,7 +117,7 @@ export default function ClientInvoicesPage() {
   }
 
   const totalPaid = invoices.filter((i) => i.status === 'payee').reduce((sum, i) => sum + Number(i.total), 0);
-  const totalPending = invoices.filter((i) => i.status === 'envoyee' || i.status === 'en_retard').reduce((sum, i) => sum + Number(i.total), 0);
+  const totalPending = invoices.filter((i) => i.status === 'envoyee' || i.status === 'en_retard' || i.status === 'paiement_declare').reduce((sum, i) => sum + Number(i.total), 0);
 
   const paymentOptions: { method: PaymentMethod; label: string; icon: any; desc: string }[] = [
     { method: 'qr_bill', label: t('invoices.qrBill'), icon: QrCode, desc: t('invoices.qrBillDesc') },
@@ -178,15 +177,18 @@ export default function ClientInvoicesPage() {
                         variant={inv.status === 'payee' ? 'default' : inv.status === 'en_retard' ? 'destructive' : 'secondary'}
                         className="text-xs"
                       >
-                        {inv.status === 'payee' ? t('invoices.paid') : inv.status === 'envoyee' ? t('invoices.unpaid') : inv.status === 'en_retard' ? t('invoices.late') : t('invoices.draft')}
+                        {inv.status === 'payee' ? t('invoices.paid') : inv.status === 'envoyee' ? t('invoices.unpaid') : inv.status === 'en_retard' ? t('invoices.late') : inv.status === 'paiement_declare' ? t('invoices.paymentDeclared') : t('invoices.draft')}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1">
-                        {inv.status !== 'payee' && inv.status !== 'brouillon' && (
+                        {inv.status !== 'payee' && inv.status !== 'brouillon' && inv.status !== 'paiement_declare' && (
                           <Button size="sm" onClick={() => openPayDialog(inv)}>
                             {t('invoices.pay')}
                           </Button>
+                        )}
+                        {inv.status === 'paiement_declare' && (
+                          <Badge variant="outline" className="text-xs text-warning">{t('invoices.paymentDeclared')}</Badge>
                         )}
                         <Button variant="ghost" size="icon" onClick={() => handleDownload(inv)}>
                           <Download className="h-4 w-4" />
@@ -288,7 +290,7 @@ export default function ClientInvoicesPage() {
                   {t('common.close')}
                 </Button>
                 <div className="flex gap-2">
-                  {detailInvoice.status !== 'payee' && detailInvoice.status !== 'brouillon' && (
+                  {detailInvoice.status !== 'payee' && detailInvoice.status !== 'brouillon' && detailInvoice.status !== 'paiement_declare' && (
                     <Button onClick={() => { setPayInvoice(detailInvoice); setPayDialogOpen(true); setDetailInvoice(null); }}>
                       {t('invoices.payNow')}
                     </Button>

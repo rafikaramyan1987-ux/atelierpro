@@ -94,6 +94,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
+  if (profile.active === false) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-center max-w-md px-6">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-destructive/10 mx-auto mb-4">
+            <ShieldOff className="h-8 w-8 text-destructive" />
+          </div>
+          <h1 className="text-xl font-bold text-foreground mb-2">{t('login.accountDisabled')}</h1>
+          <p className="text-sm text-muted-foreground mb-6">{t('login.accountDisabledDesc')}</p>
+          <Button variant="outline" onClick={() => signOut()}>
+            {t('sidebar.garage.signout')}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (profile.must_change_password && pathname !== PASSWORD_CHANGE_PATH) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">

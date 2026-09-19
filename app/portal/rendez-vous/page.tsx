@@ -9,15 +9,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -60,7 +54,9 @@ export default function ClientRendezVousPage() {
     requested_time: '09:00',
     service_type: 'Vidange',
     description: '',
+    garage_id: '',
   });
+  const [garages, setGarages] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     if (!profile?.client_id) return;
@@ -69,13 +65,22 @@ export default function ClientRendezVousPage() {
 
   async function fetchData() {
     setLoading(true);
-    const [vRes, aRes] = await Promise.all([
+    const [vRes, aRes, gRes] = await Promise.all([
       supabase.from('vehicles').select('*').eq('client_id', profile!.client_id).order('created_at', { ascending: false }),
       supabase.from('appointments').select('*, vehicle:vehicles(*)').eq('client_id', profile!.client_id).order('created_at', { ascending: false }),
+      supabase.from('garages').select('id, name').order('name'),
     ]);
     setVehicles(vRes.data as Vehicle[] ?? []);
     const appts = (aRes.data as any) ?? [];
     setAppointments(appts);
+    setGarages(gRes.data ?? []);
+
+    if (!form.garage_id && appts.length > 0) {
+      const lastWithGarage = appts.find((a: any) => a.garage_id);
+      if (lastWithGarage) {
+        setForm((f) => ({ ...f, garage_id: lastWithGarage.garage_id }));
+      }
+    }
 
     // Fetch reviews for completed appointments
     if (appts.length > 0) {
@@ -99,6 +104,12 @@ export default function ClientRendezVousPage() {
     if (!profile?.client_id) return;
     setSubmitting(true);
 
+    if (!form.garage_id) {
+      toast.error(t('devis.garageRequired'));
+      setSubmitting(false);
+      return;
+    }
+
     const { error } = await supabase.from('appointments').insert({
       client_id: profile.client_id,
       vehicle_id: form.vehicle_id || null,
@@ -106,6 +117,7 @@ export default function ClientRendezVousPage() {
       requested_time: form.requested_time,
       service_type: form.service_type,
       description: form.description || null,
+      garage_id: form.garage_id,
     });
 
     if (error) {
@@ -116,16 +128,16 @@ export default function ClientRendezVousPage() {
       // Staff notification removed: these are general client requests not tied
       // to a specific garage. Garage staff see new requests in their dashboard.
       setDialogOpen(false);
-      setForm({ vehicle_id: '', requested_date: '', requested_time: '09:00', service_type: 'Vidange', description: '' });
+      setForm({ vehicle_id: '', requested_date: '', requested_time: '09:00', service_type: 'Vidange', description: '', garage_id: form.garage_id });
       fetchData();
     }
     setSubmitting(false);
   }
 
   async function cancelAppointment(appt: Appointment) {
-    const { error } = await supabase.from('appointments').update({ status: 'annule' }).eq('id', appt.id);
+    const { error } = await supabase.rpc('client_cancel_appointment', { p_appointment_id: appt.id });
     if (error) {
-      toast.error(t('toast.error'));
+      toast.error(t('toast.error'), { description: error.message });
     } else {
       toast.success(t('toast.apptCancelled'));
       fetchData();
@@ -346,6 +358,23 @@ export default function ClientRendezVousPage() {
             <DialogTitle>{t('appts.requestAppt')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="appt-garage">{t('devis.garage')} *</Label>
+              {garages.length > 0 ? (
+                <Select value={form.garage_id || 'none'} onValueChange={(v) => setForm({ ...form, garage_id: v === 'none' ? '' : v })}>
+                  <SelectTrigger id="appt-garage">
+                    <SelectValue placeholder={t('devis.selectGarage')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {garages.map((g) => (
+                      <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <a href="/portal/garages" className="text-sm text-primary underline">{t('devis.findGarage')}</a>
+              )}
+            </div>
             <div className="space-y-2">
               <Label htmlFor="appt-vehicle">{t('garages.vehicle')}</Label>
               <Select value={form.vehicle_id || 'none'} onValueChange={(v) => setForm({ ...form, vehicle_id: v === 'none' ? '' : v })}>

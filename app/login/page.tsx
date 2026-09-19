@@ -112,38 +112,10 @@ export default function LoginPage() {
     setSubmitting(true);
 
     try {
-      const { data: clientData, error: clientErr } = await supabase
-        .from('clients')
-        .insert({
-          first_name: clientFirstName,
-          last_name: clientLastName,
-          email: clientEmail,
-          phone: clientPhone,
-        })
-        .select()
-        .single();
-
-      if (clientErr) {
-        toast.error(t('login.toast.regError'), { description: clientErr.message });
-        setSubmitting(false);
-        return;
-      }
-
-      if (clientBrand && clientModel && clientPlate) {
-        await supabase.from('vehicles').insert({
-          client_id: clientData.id,
-          brand: clientBrand,
-          model: clientModel,
-          license_plate: clientPlate,
-        });
-      }
-
       const { error: signUpError, session } = await signUp(
         clientEmail,
         clientPassword,
         `${clientFirstName} ${clientLastName}`,
-        'client',
-        clientData.id
       );
 
       if (signUpError) {
@@ -153,8 +125,34 @@ export default function LoginPage() {
       }
 
       if (session) {
+        // Session active immediately — call register_client now
+        const { error: regError } = await supabase.rpc('register_client', {
+          p_first_name: clientFirstName,
+          p_last_name: clientLastName,
+          p_phone: clientPhone,
+          p_brand: clientBrand || null,
+          p_model: clientModel || null,
+          p_plate: clientPlate || null,
+        });
+
+        if (regError) {
+          toast.error(t('login.toast.regError'), { description: regError.message });
+          setSubmitting(false);
+          return;
+        }
+
         toast.success(t('login.toast.clientCreated'), { description: t('login.toast.welcome') });
       } else {
+        // No session (email confirmation on) — store registration data for first login
+        localStorage.setItem('pending_client_registration', JSON.stringify({
+          email: clientEmail,
+          first_name: clientFirstName,
+          last_name: clientLastName,
+          phone: clientPhone,
+          brand: clientBrand,
+          model: clientModel,
+          plate: clientPlate,
+        }));
         toast.success(t('login.toast.accountCreated'), { description: t('login.toast.canLogin') });
         setSignInEmail(clientEmail);
         setSignInPassword('');

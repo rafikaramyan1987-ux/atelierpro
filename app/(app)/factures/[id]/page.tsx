@@ -133,6 +133,7 @@ export default function InvoiceDetailPage() {
     brouillon: { icon: Clock, color: 'text-muted-foreground', bg: 'bg-muted' },
     en_retard: { icon: AlertTriangle, color: 'text-destructive', bg: 'bg-destructive/10' },
     en_attente_validation: { icon: Clock, color: 'text-warning', bg: 'bg-warning/10' },
+    paiement_declare: { icon: Clock, color: 'text-warning', bg: 'bg-warning/10' },
   };
   const StatusIcon = statusConfig[invoice.status].icon;
 
@@ -160,14 +161,14 @@ export default function InvoiceDetailPage() {
       <div className={`flex items-center gap-3 rounded-lg p-4 ${statusConfig[invoice.status].bg}`}>
         <StatusIcon className={`h-5 w-5 ${statusConfig[invoice.status].color}`} />
         <div className="flex-1">
-          <p className="text-sm font-medium">{invoice.status === 'brouillon' ? t('invoices.draft') : invoice.status === 'envoyee' ? t('invoices.unpaid') : invoice.status === 'payee' ? t('invoices.paid') : invoice.status === 'en_retard' ? t('invoices.late') : INVOICE_STATUS_LABELS[invoice.status]}</p>
+          <p className="text-sm font-medium">{invoice.status === 'brouillon' ? t('invoices.draft') : invoice.status === 'envoyee' ? t('invoices.unpaid') : invoice.status === 'payee' ? t('invoices.paid') : invoice.status === 'en_retard' ? t('invoices.late') : invoice.status === 'paiement_declare' ? t('invoices.paymentDeclared') : INVOICE_STATUS_LABELS[invoice.status]}</p>
           <p className="text-xs text-muted-foreground">
             {invoice.status === 'payee' && invoice.paid_date
               ? `${t('invoices.paid')} ${new Date(invoice.paid_date).toLocaleDateString('fr-CH')}`
               : `${t('invoices.dueDate')}: ${new Date(invoice.due_date).toLocaleDateString('fr-CH')}`}
           </p>
         </div>
-        {invoice.status !== 'payee' && (
+        {invoice.status !== 'payee' && invoice.status !== 'paiement_declare' && (
           <Button size="sm" onClick={markAsPaid} disabled={updating}>
             <CheckCircle2 className="h-4 w-4 mr-1" />
             {t('invoices.paid')}
