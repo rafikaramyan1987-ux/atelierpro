@@ -13,7 +13,7 @@ import { Lock, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ResetPasswordPage() {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile } = useAuth();
   const { t } = useI18n();
   const router = useRouter();
   const [waiting, setWaiting] = useState(true);
