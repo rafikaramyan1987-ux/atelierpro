@@ -10,9 +10,12 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
+  registering: boolean;
+  setRegistering: (v: boolean) => void;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string, fullName: string, role?: string, clientId?: string) => Promise<{ error: string | null; session: Session | null; user: User | null }>;
+  signUp: (email: string, password: string, fullName: string, options?: { data?: Record<string, string> }) => Promise<{ error: string | null; session: Session | null; user: User | null }>;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<Profile | null>;
   createGarageAsAdmin: (name: string, phone?: string, email?: string) => Promise<{ error: string | null; garageId: string | null }>;
 }
 
@@ -23,6 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [registering, setRegistering] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -52,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  async function fetchProfile(userId: string, retries = 0) {
+  async function fetchProfile(userId: string, retries = 0): Promise<Profile | null> {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -68,45 +72,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return fetchProfile(userId, retries + 1);
     }
 
-    // First-login client registration: if the user signed up as a client
-    // but email confirmation was on, the register_client call was deferred.
-    // Check for pending registration data in localStorage.
+    // Deferred client registration: if the user signed up as a client
+    // (user_metadata.account_type === 'client') but the profile is still
+    // mecanicien with no garage_id and no client_id, call register_client.
     if (data && data.role === 'mecanicien' && !data.garage_id && !data.client_id) {
-      const pendingReg = localStorage.getItem('pending_client_registration');
-      if (pendingReg) {
-        try {
-          const reg = JSON.parse(pendingReg);
-          if (reg.email === data.email) {
-            const { error: regError } = await supabase.rpc('register_client', {
-              p_first_name: reg.first_name,
-              p_last_name: reg.last_name,
-              p_phone: reg.phone,
-              p_brand: reg.brand || null,
-              p_model: reg.model || null,
-              p_plate: reg.plate || null,
-            });
-            if (!regError) {
-              localStorage.removeItem('pending_client_registration');
-              const { data: updatedProfile } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', userId)
-                .maybeSingle();
-              if (updatedProfile) {
-                setProfile(updatedProfile as Profile);
-                setLoading(false);
-                return;
-              }
-            }
+      const { data: userData } = await supabase.auth.getUser();
+      const meta = userData.user?.user_metadata as Record<string, string> | undefined;
+      if (meta?.account_type === 'client') {
+        const { error: regError } = await supabase.rpc('register_client', {
+          p_first_name: meta.first_name ?? '',
+          p_last_name: meta.last_name ?? '',
+          p_phone: meta.phone ?? '',
+          p_brand: meta.brand || null,
+          p_model: meta.model || null,
+          p_plate: meta.plate || null,
+        });
+        if (!regError) {
+          const { data: updatedProfile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .maybeSingle();
+          if (updatedProfile) {
+            setProfile(updatedProfile as Profile);
+            setLoading(false);
+            return updatedProfile as Profile;
           }
-        } catch {
-          // Ignore parse errors
         }
       }
     }
 
     setProfile(data as Profile | null);
     setLoading(false);
+    return data as Profile | null;
+  }
+
+  async function refreshProfile(): Promise<Profile | null> {
+    if (!user) return null;
+    return fetchProfile(user.id);
   }
 
   async function signIn(email: string, password: string) {
@@ -114,10 +117,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message ?? null };
   }
 
-  async function signUp(email: string, password: string, fullName: string, role: string = 'mecanicien', clientId?: string) {
+  async function signUp(email: string, password: string, fullName: string, options?: { data?: Record<string, string> }) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: { data: { full_name: fullName, ...(options?.data ?? {}) } },
     });
 
     if (error) {
@@ -162,7 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, signIn, signUp, signOut, createGarageAsAdmin }}>
+    <AuthContext.Provider value={{ user, session, profile, loading, registering, setRegistering, signIn, signUp, signOut, refreshProfile, createGarageAsAdmin }}>
       {children}
     </AuthContext.Provider>
   );

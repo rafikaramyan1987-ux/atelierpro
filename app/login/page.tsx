@@ -23,7 +23,7 @@ import { LanguageSwitcher } from '@/components/language-switcher';
 import { toast } from 'sonner';
 
 export default function LoginPage() {
-  const { user, profile, loading, signIn, signUp } = useAuth();
+  const { user, profile, loading, registering, setRegistering, signIn, signUp, refreshProfile } = useAuth();
   const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -58,6 +58,7 @@ export default function LoginPage() {
   const [clientModel, setClientModel] = useState('');
 
   useEffect(() => {
+    if (registering) return;
     if (!loading && user && profile) {
       if (profile.role === 'super_admin') {
         router.push('/admin');
@@ -67,7 +68,7 @@ export default function LoginPage() {
         router.push('/portal');
       }
     }
-  }, [user, profile, loading, router]);
+  }, [user, profile, loading, registering, router]);
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
@@ -112,14 +113,17 @@ export default function LoginPage() {
     setSubmitting(true);
 
     try {
+      setRegistering(true);
       const { error: signUpError, session } = await signUp(
         clientEmail,
         clientPassword,
         `${clientFirstName} ${clientLastName}`,
+        { data: { account_type: 'client', first_name: clientFirstName, last_name: clientLastName, phone: clientPhone, brand: clientBrand, model: clientModel, plate: clientPlate } },
       );
 
       if (signUpError) {
         toast.error(t('login.toast.accountError'), { description: signUpError });
+        setRegistering(false);
         setSubmitting(false);
         return;
       }
@@ -137,28 +141,26 @@ export default function LoginPage() {
 
         if (regError) {
           toast.error(t('login.toast.regError'), { description: regError.message });
+          setRegistering(false);
           setSubmitting(false);
           return;
         }
 
+        await refreshProfile();
+        setRegistering(false);
         toast.success(t('login.toast.clientCreated'), { description: t('login.toast.welcome') });
+        router.push('/portal');
       } else {
-        // No session (email confirmation on) — store registration data for first login
-        localStorage.setItem('pending_client_registration', JSON.stringify({
-          email: clientEmail,
-          first_name: clientFirstName,
-          last_name: clientLastName,
-          phone: clientPhone,
-          brand: clientBrand,
-          model: clientModel,
-          plate: clientPlate,
-        }));
+        // No session (email confirmation on) — register_client will be
+        // called automatically on first login via user_metadata.
+        setRegistering(false);
         toast.success(t('login.toast.accountCreated'), { description: t('login.toast.canLogin') });
         setSignInEmail(clientEmail);
         setSignInPassword('');
         setActiveTab('signin');
       }
     } catch (err: any) {
+      setRegistering(false);
       toast.error(t('login.toast.regError'), { description: err.message });
     }
     setSubmitting(false);
