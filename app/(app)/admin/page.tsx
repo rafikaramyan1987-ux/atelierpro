@@ -43,21 +43,28 @@ export default function AdminPage() {
   async function fetchData() {
     setLoading(true);
 
-    const [garagesRes, profilesRes, clientsRes, invoicesRes, supportRes] = await Promise.all([
-      supabase.from('garages').select('id, name, created_at, subscription_status').order('created_at', { ascending: false }),
-      supabase.from('profiles').select('id, garage_id, role').in('role', ['admin', 'mecanicien', 'secretaire']),
-      supabase.from('clients').select('id, garage_id'),
-      supabase.from('invoices').select('id, garage_id, total, status'),
+    const [statsRes, garagesRes, supportRes] = await Promise.all([
+      supabase.rpc('admin_garage_stats'),
+      supabase.from('garages').select('id, name').order('created_at', { ascending: false }),
       supabase.from('support_access_requests').select('id, garage_id, reason, status, created_at, requested_by').order('created_at', { ascending: false }),
     ]);
 
-    const garageList = (garagesRes.data ?? []) as any[];
-    const allProfiles = (profilesRes.data ?? []) as any[];
-    const allClients = (clientsRes.data ?? []) as any[];
-    const allInvoices = (invoicesRes.data ?? []) as any[];
+    const statsRows = (statsRes.data ?? []) as any[];
+    const garageNameMap = new Map((garagesRes.data ?? []).map((g: any) => [g.id, g.name]));
     const allSupport = (supportRes.data ?? []) as any[];
 
-    // Get requester names
+    const aggregates: GarageAggregate[] = statsRows.map((row) => ({
+      id: row.garage_id,
+      name: row.garage_name,
+      created_at: row.created_at,
+      subscription_status: row.subscription_status,
+      employee_count: Number(row.employee_count),
+      client_count: Number(row.client_count),
+      total_revenue: Number(row.total_revenue),
+    }));
+
+    setGarages(aggregates);
+
     const requesterIds = Array.from(new Set(allSupport.map((s) => s.requested_by)));
     const { data: requesterProfiles } = await supabase
       .from('profiles')
@@ -65,21 +72,6 @@ export default function AdminPage() {
       .in('id', requesterIds);
 
     const requesterMap = new Map((requesterProfiles ?? []).map((p: any) => [p.id, p.full_name]));
-    const garageNameMap = new Map(garageList.map((g: any) => [g.id, g.name]));
-
-    const aggregates: GarageAggregate[] = garageList.map((g) => ({
-      id: g.id,
-      name: g.name,
-      created_at: g.created_at,
-      subscription_status: g.subscription_status,
-      employee_count: allProfiles.filter((p) => p.garage_id === g.id).length,
-      client_count: allClients.filter((c) => c.garage_id === g.id).length,
-      total_revenue: allInvoices
-        .filter((i) => i.garage_id === g.id && i.status === 'payee')
-        .reduce((sum, i) => sum + Number(i.total), 0),
-    }));
-
-    setGarages(aggregates);
 
     const supportData: SupportRequest[] = allSupport.map((s) => ({
       id: s.id,

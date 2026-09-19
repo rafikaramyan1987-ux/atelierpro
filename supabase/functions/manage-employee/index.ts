@@ -20,9 +20,11 @@ function jsonError(status: number, message: string, detail?: string) {
 const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
 
 function generatePassword(length = 16): string {
+  const values = new Uint32Array(length);
+  crypto.getRandomValues(values);
   let pwd = "";
   for (let i = 0; i < length; i++) {
-    pwd += chars[Math.floor(Math.random() * chars.length)];
+    pwd += chars[values[i] % chars.length];
   }
   return pwd;
 }
