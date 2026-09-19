@@ -170,7 +170,7 @@ export default function LoginPage() {
     e.preventDefault();
     setResetSending(true);
     const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-      redirectTo: `${window.location.origin}/login`,
+      redirectTo: `${window.location.origin}/reinitialiser-mot-de-passe`,
     });
     if (error) {
       toast.error(t('login.toast.regError'), { description: error.message });

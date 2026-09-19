@@ -40,6 +40,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' && typeof window !== 'undefined' && window.location.pathname !== '/reinitialiser-mot-de-passe') {
+        window.location.href = '/reinitialiser-mot-de-passe';
+        return;
+      }
       (async () => {
         setSession(session);
         setUser(session?.user ?? null);
