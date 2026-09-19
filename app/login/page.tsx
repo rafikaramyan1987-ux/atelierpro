@@ -59,7 +59,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && user && profile) {
-      if (isGarageStaff(profile.role)) {
+      if (profile.role === 'super_admin') {
+        router.push('/admin');
+      } else if (isGarageStaff(profile.role)) {
         router.push('/dashboard');
       } else if (profile.role === 'client') {
         router.push('/portal');

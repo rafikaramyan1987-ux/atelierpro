@@ -6,12 +6,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const supabaseUrl = Deno.env.get("SUPABASE_URL");
+const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
 
-const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
+function jsonError(status: number, message: string, detail?: string) {
+  return new Response(
+    JSON.stringify({ error: message, detail: detail ?? null }),
+    { status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  );
+}
 
 const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
 
@@ -29,56 +33,48 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    if (!supabaseUrl) return jsonError(500, "missing configuration: SUPABASE_URL");
+    if (!serviceRoleKey) return jsonError(500, "missing configuration: SUPABASE_SERVICE_ROLE_KEY");
+    if (!anonKey) return jsonError(500, "missing configuration: SUPABASE_ANON_KEY");
+
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing auth header" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonError(401, "not authenticated", "Missing Authorization header");
     }
 
-    // Create user client to verify the caller
-    const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+    const userClient = createClient(supabaseUrl, anonKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await userClient.auth.getUser(token);
     if (userError || !userData.user) {
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonError(401, "not authenticated", "Invalid or expired token");
     }
 
     const callerId = userData.user.id;
 
-    // Fetch caller's profile
     const { data: callerProfile, error: profileError } = await adminClient
       .from("profiles")
       .select("role, garage_id")
       .eq("id", callerId)
       .maybeSingle();
 
-    if (profileError || !callerProfile) {
-      return new Response(JSON.stringify({ error: "Profile not found" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (profileError) {
+      return jsonError(403, "failed to fetch caller profile", profileError.message);
     }
-
+    if (!callerProfile) {
+      return jsonError(403, "caller profile not found");
+    }
     if (callerProfile.role !== "admin") {
-      return new Response(JSON.stringify({ error: "Only admins can manage employees" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonError(403, "not authorized", "Only garage admins can manage employees");
     }
-
     if (!callerProfile.garage_id) {
-      return new Response(JSON.stringify({ error: "No garage associated" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonError(400, "no garage associated", "Caller has no garage_id");
     }
 
     const body = await req.json();
@@ -87,23 +83,16 @@ Deno.serve(async (req: Request) => {
     if (action === "create") {
       const { email, full_name, role, phone } = body;
 
-      if (!email || !full_name || !role) {
-        return new Response(JSON.stringify({ error: "email, full_name, role required" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      if (!email) return jsonError(400, "missing field: email");
+      if (!full_name) return jsonError(400, "missing field: full_name");
+      if (!role) return jsonError(400, "missing field: role");
 
       if (role !== "mecanicien" && role !== "secretaire") {
-        return new Response(JSON.stringify({ error: "Can only create mecanicien or secretaire" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonError(400, "invalid role", "Can only create mecanicien or secretaire");
       }
 
       const tempPassword = generatePassword();
 
-      // Create auth user using Admin API
       const { data: authUser, error: createError } = await adminClient.auth.admin.createUser({
         email,
         password: tempPassword,
@@ -112,13 +101,17 @@ Deno.serve(async (req: Request) => {
       });
 
       if (createError) {
-        return new Response(JSON.stringify({ error: createError.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        const msg = createError.message.toLowerCase();
+        if (msg.includes("already") || msg.includes("exists") || msg.includes("registered")) {
+          return jsonError(409, "email already exists", createError.message);
+        }
+        return jsonError(400, "failed to create auth user", createError.message);
       }
 
-      // Upsert profile with correct role, garage_id, phone, must_change_password
+      if (!authUser?.user?.id) {
+        return jsonError(500, "failed to create auth user", "No user id returned");
+      }
+
       const { error: upsertError } = await adminClient
         .from("profiles")
         .upsert({
@@ -132,12 +125,8 @@ Deno.serve(async (req: Request) => {
         }, { onConflict: "id" });
 
       if (upsertError) {
-        // Try to clean up the auth user if profile fails
         await adminClient.auth.admin.deleteUser(authUser.user.id);
-        return new Response(JSON.stringify({ error: upsertError.message }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonError(500, "failed to create profile", upsertError.message);
       }
 
       return new Response(JSON.stringify({ temp_password: tempPassword }), {
@@ -150,55 +139,39 @@ Deno.serve(async (req: Request) => {
       const { target_user_id } = body;
 
       if (!target_user_id) {
-        return new Response(JSON.stringify({ error: "target_user_id required" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonError(400, "missing field: target_user_id");
       }
-
       if (target_user_id === callerId) {
-        return new Response(JSON.stringify({ error: "Cannot reset own password" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonError(400, "cannot reset own password");
       }
 
-      // Verify target is in the same garage
       const { data: targetProfile, error: targetError } = await adminClient
         .from("profiles")
         .select("garage_id")
         .eq("id", target_user_id)
         .maybeSingle();
 
-      if (targetError || !targetProfile) {
-        return new Response(JSON.stringify({ error: "Target user not found" }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+      if (targetError) {
+        return jsonError(500, "failed to fetch target profile", targetError.message);
       }
-
+      if (!targetProfile) {
+        return jsonError(404, "target user not found");
+      }
       if (targetProfile.garage_id !== callerProfile.garage_id) {
-        return new Response(JSON.stringify({ error: "Target not in your garage" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonError(403, "target not in your garage");
       }
 
       const tempPassword = generatePassword();
 
       const { error: updateError } = await adminClient.auth.admin.updateUserById(
         target_user_id,
-        { password: tempPassword }
+        { password: tempPassword },
       );
 
       if (updateError) {
-        return new Response(JSON.stringify({ error: updateError.message }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonError(500, "failed to reset password", updateError.message);
       }
 
-      // Set must_change_password flag
       await adminClient
         .from("profiles")
         .update({ must_change_password: true })
@@ -210,15 +183,10 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    return new Response(JSON.stringify({ error: "Unknown action" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonError(400, "invalid action", `Unknown action: ${action ?? "none"}`);
   } catch (err) {
-    console.error("manage-employee error:", err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    console.error("manage-employee unexpected error:", err);
+    const message = err instanceof Error ? err.message : String(err);
+    return jsonError(500, "unexpected error", message);
   }
 });

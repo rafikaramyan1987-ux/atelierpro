@@ -85,7 +85,11 @@ export default function EquipePage() {
     e.preventDefault();
     setSubmitting(true);
 
-    const { data: respData, error: fetchError } = await supabase.functions.invoke('manage-employee', {
+    const { data: respData, error: fetchError } = await supabase.functions.invoke<{
+      temp_password?: string;
+      error?: string;
+      detail?: string;
+    }>('manage-employee', {
       body: {
         action: 'create',
         email: newMember.email,
@@ -96,14 +100,25 @@ export default function EquipePage() {
     });
 
     if (fetchError) {
-      toast.error(t('team.createError'), { description: fetchError.message });
+      const ctx = fetchError.context as Response | undefined;
+      let detail = fetchError.message;
+      try {
+        if (ctx) {
+          const body = await ctx.json() as { error?: string; detail?: string };
+          detail = body?.detail ?? body?.error ?? fetchError.message;
+          console.error('manage-employee create error:', ctx.status, body);
+        }
+      } catch {
+        console.error('manage-employee create error (no JSON body):', fetchError);
+      }
+      toast.error(t('team.createError'), { description: detail });
       setSubmitting(false);
       return;
     }
 
     const password = respData?.temp_password;
     if (!password) {
-      toast.error(t('team.createError'), { description: 'No password returned' });
+      toast.error(t('team.createError'), { description: t('team.noPasswordReturned') });
       setSubmitting(false);
       return;
     }
@@ -118,20 +133,35 @@ export default function EquipePage() {
   async function handleResetPassword() {
     if (!resetTarget) return;
     setResetSubmitting(true);
-    const { data: respData, error: fetchError } = await supabase.functions.invoke('manage-employee', {
+    const { data: respData, error: fetchError } = await supabase.functions.invoke<{
+      temp_password?: string;
+      error?: string;
+      detail?: string;
+    }>('manage-employee', {
       body: {
         action: 'reset_password',
         target_user_id: resetTarget.id,
       },
     });
     if (fetchError) {
-      toast.error(t('team.resetError'), { description: fetchError.message });
+      const ctx = fetchError.context as Response | undefined;
+      let detail = fetchError.message;
+      try {
+        if (ctx) {
+          const body = await ctx.json() as { error?: string; detail?: string };
+          detail = body?.detail ?? body?.error ?? fetchError.message;
+          console.error('manage-employee reset error:', ctx.status, body);
+        }
+      } catch {
+        console.error('manage-employee reset error (no JSON body):', fetchError);
+      }
+      toast.error(t('team.resetError'), { description: detail });
       setResetSubmitting(false);
       return;
     }
     const password = respData?.temp_password;
     if (!password) {
-      toast.error(t('team.resetError'), { description: 'No password returned' });
+      toast.error(t('team.resetError'), { description: t('team.noPasswordReturned') });
       setResetSubmitting(false);
       return;
     }

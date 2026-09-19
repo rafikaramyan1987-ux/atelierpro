@@ -16,6 +16,8 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
     if (!loading) {
       if (!user) {
         router.push('/login');
+      } else if (profile && profile.role === 'super_admin') {
+        router.push('/admin');
       } else if (profile && profile.role !== 'client') {
         router.push('/dashboard');
       }
