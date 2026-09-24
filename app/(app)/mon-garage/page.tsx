@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { type Garage, SERVICE_TYPES } from '@/lib/types/database';
-import { Wrench, Save, Loader2, MapPin, Phone, Mail, Star, CheckCircle2, Store, Snowflake } from 'lucide-react';
+import { Wrench, Save, Loader2, MapPin, Phone, Mail, Star, CheckCircle2, Store, Snowflake, Eye, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -44,6 +44,7 @@ export default function MonGaragePage() {
   const [logoUrl, setLogoUrl] = useState('');
   const [services, setServices] = useState<string[]>([]);
   const [gardiennageEnabled, setGardiennageEnabled] = useState(false);
+  const [isPublished, setIsPublished] = useState(false);
 
   useEffect(() => {
     async function fetchGarage() {
@@ -68,6 +69,7 @@ export default function MonGaragePage() {
         setLogoUrl(data.logo_url || '');
         setServices(data.services_offered || []);
         setGardiennageEnabled((data as any).gardiennage_enabled ?? false);
+        setIsPublished((data as any).is_published ?? false);
         if (!data.address || !data.city) {
           setJustCreated(true);
         }
@@ -99,6 +101,7 @@ export default function MonGaragePage() {
         logo_url: logoUrl || null,
         services_offered: services,
         gardiennage_enabled: gardiennageEnabled,
+        is_published: isPublished,
       })
       .eq('id', garage.id);
 
@@ -106,7 +109,7 @@ export default function MonGaragePage() {
       toast.error(t('garageProfile.toast.error'), { description: error.message });
     } else {
       toast.success(t('garageProfile.toast.saved'));
-      setGarage({ ...garage, name, description, address, city, postal_code: postalCode, phone, email, logo_url: logoUrl, services_offered: services, gardiennage_enabled: gardiennageEnabled } as Garage);
+      setGarage({ ...garage, name, description, address, city, postal_code: postalCode, phone, email, logo_url: logoUrl, services_offered: services, gardiennage_enabled: gardiennageEnabled, is_published: isPublished } as Garage);
       if (justCreated) {
         setJustCreated(false);
         router.push('/dashboard');
@@ -269,6 +272,45 @@ export default function MonGaragePage() {
                   )} />
                 </button>
               </div>
+
+              {/* Publication toggle */}
+              <div className="flex items-center justify-between rounded-lg border border-border/60 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                    <Eye className="h-4.5 w-4.5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{t('garageProfile.published')}</p>
+                    <p className="text-xs text-muted-foreground">{t('garageProfile.publishedHint')}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={isPublished}
+                  disabled={!address || !city}
+                  onClick={() => {
+                    if (!address || !city) return;
+                    setIsPublished(!isPublished);
+                  }}
+                  className={cn(
+                    'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                    isPublished ? 'bg-primary' : 'bg-muted',
+                    (!address || !city) && 'opacity-50 cursor-not-allowed'
+                  )}
+                >
+                  <span className={cn(
+                    'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                    isPublished ? 'translate-x-6' : 'translate-x-1'
+                  )} />
+                </button>
+              </div>
+              {(!address || !city) && (
+                <div className="flex items-start gap-2 rounded-lg bg-warning/5 border border-warning/20 p-3 text-sm">
+                  <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+                  <p className="text-muted-foreground">{t('garageProfile.publishedWarning')}</p>
+                </div>
+              )}
 
               <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
                 {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}

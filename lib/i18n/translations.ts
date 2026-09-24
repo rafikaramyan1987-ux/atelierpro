@@ -980,6 +980,9 @@ export const translations: Record<Locale, TranslationDict> = {
     'reminders.gardiennageDue': 'Vos pneus sont stockés chez nous — temps de les monter ({months})',
     'garageProfile.gardiennage': 'Gardiennage de pneus',
     'garageProfile.gardiennageHint': 'Activez si vous proposez le stockage de pneus. Permet de marquer les véhicules dont les pneus sont stockés au garage.',
+    'garageProfile.published': 'Visible dans la recherche publique',
+    'garageProfile.publishedHint': 'Les clients peuvent trouver votre garage sur la plateforme.',
+    'garageProfile.publishedWarning': 'Vous devez renseigner une adresse et une ville avant de pouvoir publier votre garage.',
 
     // ── Roles & approval flows ──
     'role.secretaire': 'Secrétaire',
@@ -2002,6 +2005,9 @@ export const translations: Record<Locale, TranslationDict> = {
     'reminders.gardiennageDue': 'Ihre Reifen sind bei uns eingelagert — Zeit zum Wechseln ({months})',
     'garageProfile.gardiennage': 'Reifeneinlagerung',
     'garageProfile.gardiennageHint': 'Aktivieren Sie dies, wenn Sie Reifeneinlagerung anbieten. Ermöglicht das Markieren von Fahrzeugen mit im Garage eingelagerten Reifen.',
+    'garageProfile.published': 'Sichtbar in der öffentlichen Suche',
+    'garageProfile.publishedHint': 'Kunden können Ihre Garage auf der Plattform finden.',
+    'garageProfile.publishedWarning': 'Sie müssen eine Adresse und eine Stadt angeben, bevor Sie Ihre Garage veröffentlichen können.',
 
     // ── Roles & approval flows ──
     'role.secretaire': 'Sekretär/in',
@@ -3024,6 +3030,9 @@ export const translations: Record<Locale, TranslationDict> = {
     'reminders.gardiennageDue': 'I suoi pneumatici sono da noi — tempo di montarli ({months})',
     'garageProfile.gardiennage': 'Deposito pneumatici',
     'garageProfile.gardiennageHint': 'Attivare se offrite il deposito pneumatici. Permette di marcare i veicoli con pneumatici depositati in officina.',
+    'garageProfile.published': 'Visibile nella ricerca pubblica',
+    'garageProfile.publishedHint': 'I clienti possono trovare la sua officina sulla piattaforma.',
+    'garageProfile.publishedWarning': 'È necessario inserire un indirizzo e una città prima di poter pubblicare la officina.',
 
     // ── Roles & approval flows ──
     'role.secretaire': 'Segretario/a',
@@ -4046,6 +4055,9 @@ export const translations: Record<Locale, TranslationDict> = {
     'reminders.gardiennageDue': 'Your tyres are stored with us — time to swap them ({months})',
     'garageProfile.gardiennage': 'Tyre storage',
     'garageProfile.gardiennageHint': 'Enable if you offer tyre storage. Lets you mark vehicles whose tyres are stored at the garage.',
+    'garageProfile.published': 'Visible in public search',
+    'garageProfile.publishedHint': 'Customers can find your garage on the platform.',
+    'garageProfile.publishedWarning': 'You must provide an address and a city before you can publish your garage.',
 
     // ── Roles & approval flows ──
     'role.secretaire': 'Secretary',
@@ -5068,6 +5080,9 @@ export const translations: Record<Locale, TranslationDict> = {
     'reminders.gardiennageDue': 'Gomat tuaja janë te ne — kohë për t\'i montuar ({months})',
     'garageProfile.gardiennage': 'Ruajtje gomash',
     'garageProfile.gardiennageHint': 'Aktivizo nëse ofroni ruajtje gomash. Lejon shënimin e automjeteve me goma të ruajtura në garazh.',
+    'garageProfile.published': 'I dukshëm në kërkimin publik',
+    'garageProfile.publishedHint': 'Klientët mund të gjejnë garazhin tuaj në platformë.',
+    'garageProfile.publishedWarning': 'Duhet të vendosni një adresë dhe një qytet para se të publikoni garazhin tuaj.',
 
     // ── Roles & approval flows ──
     'role.secretaire': 'Sekretar/e',

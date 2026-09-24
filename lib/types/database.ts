@@ -232,6 +232,7 @@ export interface Garage {
   review_count: number;
   commission_rate: number;
   gardiennage_enabled: boolean;
+  is_published: boolean;
   subscription_status: 'active' | 'suspended' | 'trial';
   subscription_updated_at: string | null;
   created_at: string;
