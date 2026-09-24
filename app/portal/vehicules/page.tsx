@@ -226,15 +226,17 @@ export default function ClientVehiclesPage() {
                   )}
                 </div>
 
-                {vehicle.invoices && vehicle.invoices.length > 0 && (
+                {((vehicle.invoices && vehicle.invoices.length > 0) || (repairOrders[vehicle.id] ?? []).length > 0) && (
                   <div className="pt-3 border-t">
                     <Button variant="ghost" size="sm" className="w-full" onClick={() => setExpandedVehicle(expandedVehicle === vehicle.id ? null : vehicle.id)}>
                       <FileText className="h-3.5 w-3.5 mr-1" />
-                      {vehicle.invoices.length} {t('vehicles.maintenanceHistory')}
+                      {vehicle.invoices && vehicle.invoices.length > 0
+                        ? `${vehicle.invoices.length} ${t('vehicles.maintenanceHistory')}`
+                        : t('vehicles.photosAndTracking')}
                     </Button>
                     {expandedVehicle === vehicle.id && (
                       <div className="mt-2 space-y-1.5 animate-fade-in">
-                        {vehicle.invoices.map((inv) => (
+                        {vehicle.invoices && vehicle.invoices.length > 0 && vehicle.invoices.map((inv) => (
                           <div key={inv.id} className="flex items-center justify-between rounded-md bg-secondary/50 px-3 py-2 text-sm">
                             <div className="flex items-center gap-2">
                               <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
