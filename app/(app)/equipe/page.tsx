@@ -124,7 +124,6 @@ export default function EquipePage() {
     }
     setCreatedPassword(password);
     toast.success(t('team.addedToast'));
-    setDialogOpen(false);
     setNewMember({ email: '', full_name: '', role: 'mecanicien', phone: '' });
     fetchMembers();
     setSubmitting(false);
