@@ -800,6 +800,14 @@ export const translations: Record<Locale, TranslationDict> = {
     'or.payerFlotte': 'Flotte',
     'or.secondaryPayer': 'Payeur secondaire (optionnel)',
     'or.secondaryPayerAmount': 'Montant payeur secondaire',
+    'or.tabFromDevis': 'Depuis un devis',
+    'or.tabDirectClient': 'Client direct',
+    'or.selectClient': 'Sélectionner un client',
+    'or.selectVehicle': 'Sélectionner un véhicule',
+    'or.noClients': 'Aucun client disponible',
+    'or.noVehicles': 'Aucun véhicule pour ce client',
+    'or.description': 'Description des travaux',
+    'or.descriptionPlaceholder': 'Décrivez les travaux à effectuer...',
 
     // ── Planning Atelier ──
     'planning.title': 'Planning atelier',
@@ -1825,6 +1833,14 @@ export const translations: Record<Locale, TranslationDict> = {
     'or.payerFlotte': 'Flotte',
     'or.secondaryPayer': 'Sekundärer Zahler (optional)',
     'or.secondaryPayerAmount': 'Betrag sekundärer Zahler',
+    'or.tabFromDevis': 'Aus Offerte',
+    'or.tabDirectClient': 'Direkter Kunde',
+    'or.selectClient': 'Kunde auswählen',
+    'or.selectVehicle': 'Fahrzeug auswählen',
+    'or.noClients': 'Keine Kunden verfügbar',
+    'or.noVehicles': 'Keine Fahrzeuge für diesen Kunden',
+    'or.description': 'Arbeitsbeschreibung',
+    'or.descriptionPlaceholder': 'Beschreiben Sie die auszuführenden Arbeiten...',
 
     // ── Planning Atelier ──
     'planning.title': 'Werkstattplanung',
@@ -2850,6 +2866,14 @@ export const translations: Record<Locale, TranslationDict> = {
     'or.payerFlotte': 'Flotta',
     'or.secondaryPayer': 'Pagatore secondario (opzionale)',
     'or.secondaryPayerAmount': 'Importo pagatore secondario',
+    'or.tabFromDevis': 'Da preventivo',
+    'or.tabDirectClient': 'Cliente diretto',
+    'or.selectClient': 'Seleziona un cliente',
+    'or.selectVehicle': 'Seleziona un veicolo',
+    'or.noClients': 'Nessun cliente disponibile',
+    'or.noVehicles': 'Nessun veicolo per questo cliente',
+    'or.description': 'Descrizione lavori',
+    'or.descriptionPlaceholder': 'Descrivi i lavori da eseguire...',
 
     // ── Planning Atelier ──
     'planning.title': 'Pianificazione officina',
@@ -3875,6 +3899,14 @@ export const translations: Record<Locale, TranslationDict> = {
     'or.payerFlotte': 'Fleet',
     'or.secondaryPayer': 'Secondary payer (optional)',
     'or.secondaryPayerAmount': 'Secondary payer amount',
+    'or.tabFromDevis': 'From quote',
+    'or.tabDirectClient': 'Direct client',
+    'or.selectClient': 'Select a client',
+    'or.selectVehicle': 'Select a vehicle',
+    'or.noClients': 'No clients available',
+    'or.noVehicles': 'No vehicles for this client',
+    'or.description': 'Work description',
+    'or.descriptionPlaceholder': 'Describe the work to be done...',
 
     // ── Planning Atelier ──
     'planning.title': 'Workshop planning',
@@ -4900,6 +4932,14 @@ export const translations: Record<Locale, TranslationDict> = {
     'or.payerFlotte': 'Flotë',
     'or.secondaryPayer': 'Pagues dytësor (opsional)',
     'or.secondaryPayerAmount': 'Shuma e paguesit dytësor',
+    'or.tabFromDevis': 'Nga oferta',
+    'or.tabDirectClient': 'Klient i drejtpërdrejtë',
+    'or.selectClient': 'Zgjidh një klient',
+    'or.selectVehicle': 'Zgjidh një automjet',
+    'or.noClients': 'Asnjë klient në dispozicion',
+    'or.noVehicles': 'Asnjë automjet për këtë klient',
+    'or.description': 'Përshkrimi i punimeve',
+    'or.descriptionPlaceholder': 'Përshkruani punët për t\'u kryer...',
 
     // ── Planning Atelier ──
     'planning.title': 'Planifikimi i punishtes',

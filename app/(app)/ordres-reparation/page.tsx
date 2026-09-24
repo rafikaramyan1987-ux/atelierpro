@@ -77,6 +77,12 @@ export default function RepairOrdersPage() {
   const [selectedDevisId, setSelectedDevisId] = useState('');
   const [selectedMechanicId, setSelectedMechanicId] = useState('');
   const [workspaceName, setWorkspaceName] = useState('');
+  const [createMode, setCreateMode] = useState<'devis' | 'direct'>('devis');
+  const [directClients, setDirectClients] = useState<Client[]>([]);
+  const [directVehicles, setDirectVehicles] = useState<Vehicle[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState('');
+  const [selectedVehicleId, setSelectedVehicleId] = useState('');
+  const [directDescription, setDirectDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [convertDialog, setConvertDialog] = useState<RepairOrder | null>(null);
   const [detailsDialog, setDetailsDialog] = useState<RepairOrder | null>(null);
@@ -112,6 +118,25 @@ export default function RepairOrdersPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    if (createDialog && createMode === 'direct' && directClients.length === 0) {
+      supabase.from('clients').select('*').eq('garage_id', profile?.garage_id ?? '').order('last_name').then(({ data }) => {
+        setDirectClients(data as Client[] ?? []);
+      });
+    }
+  }, [createDialog, createMode]);
+
+  useEffect(() => {
+    if (selectedClientId) {
+      supabase.from('vehicles').select('*').eq('client_id', selectedClientId).order('brand').then(({ data }) => {
+        setDirectVehicles(data as Vehicle[] ?? []);
+      });
+    } else {
+      setDirectVehicles([]);
+    }
+    setSelectedVehicleId('');
+  }, [selectedClientId]);
 
   async function handleCreateOR() {
     if (!selectedDevisId) {
@@ -184,6 +209,42 @@ export default function RepairOrdersPage() {
     toast.success(t('or.created'), { description: t('or.createdDesc') });
     setCreateDialog(false);
     setSelectedDevisId('');
+    setSelectedMechanicId('');
+    setWorkspaceName('');
+    setExtraItems([]);
+    fetchData();
+    setSubmitting(false);
+  }
+
+  async function handleCreateDirectOR() {
+    if (!selectedClientId || !selectedVehicleId || !directDescription.trim()) {
+      toast.error(t('toast.error'));
+      return;
+    }
+    setSubmitting(true);
+    const { data: orNumber } = await supabase.rpc('generate_or_number');
+    const { data: newOR, error: orError } = await supabase.from('repair_orders').insert({
+      or_number: orNumber,
+      service_request_id: null,
+      client_id: selectedClientId,
+      vehicle_id: selectedVehicleId,
+      assigned_mechanic_id: selectedMechanicId || null,
+      workspace_name: workspaceName.trim() || null,
+      notes: directDescription.trim(),
+      status: 'en_cours',
+      garage_id: profile?.garage_id ?? null,
+      created_by: profile?.id ?? null,
+    }).select().single();
+    if (orError) {
+      toast.error(t('toast.error'), { description: orError.message });
+      setSubmitting(false);
+      return;
+    }
+    toast.success(t('or.created'), { description: t('or.createdDesc') });
+    setCreateDialog(false);
+    setSelectedClientId('');
+    setSelectedVehicleId('');
+    setDirectDescription('');
     setSelectedMechanicId('');
     setWorkspaceName('');
     setExtraItems([]);
@@ -417,7 +478,7 @@ export default function RepairOrdersPage() {
   return (
     <div className="p-6 space-y-6">
       <PageHeader title={t('or.title')} description={t('or.desc')}>
-        <Button onClick={() => setCreateDialog(true)} disabled={acceptedDevis.length === 0}>
+        <Button onClick={() => { setCreateMode(acceptedDevis.length === 0 ? 'direct' : 'devis'); setCreateDialog(true); }}>
           <Plus className="h-4 w-4 mr-2" />
           {t('or.createFromDevis')}
         </Button>
@@ -495,90 +556,172 @@ export default function RepairOrdersPage() {
           <DialogHeader>
             <DialogTitle>{t('or.createFromDevis')}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">{t('or.selectDevis')}</label>
-              <Select value={selectedDevisId} onValueChange={setSelectedDevisId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t('or.selectDevis')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {acceptedDevis.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.client ? `${d.client.first_name} ${d.client.last_name}` : '—'} — {d.description.slice(0, 40)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {acceptedDevis.length === 0 && (
-                <p className="text-xs text-muted-foreground">{t('or.noAcceptedDevis')}</p>
+          <Tabs value={createMode} onValueChange={(v) => setCreateMode(v as 'devis' | 'direct')}>
+            <TabsList className="w-full">
+              <TabsTrigger value="devis" className="flex-1">{t('or.tabFromDevis')}</TabsTrigger>
+              <TabsTrigger value="direct" className="flex-1">{t('or.tabDirectClient')}</TabsTrigger>
+            </TabsList>
+            <TabsContent value="devis" className="space-y-4 py-2">
+              {acceptedDevis.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">{t('or.noAcceptedDevis')}</p>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">{t('or.selectDevis')}</label>
+                    <Select value={selectedDevisId} onValueChange={setSelectedDevisId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder={t('or.selectDevis')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {acceptedDevis.map((d) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.client ? `${d.client.first_name} ${d.client.last_name}` : '—'} — {d.description.slice(0, 40)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">{t('or.assignMechanic')}</label>
+                    <Select value={selectedMechanicId} onValueChange={setSelectedMechanicId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder={t('or.assignMechanic')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">{t('or.noMechanic')}</SelectItem>
+                        {mechanics.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">{t('or.workspace')}</label>
+                    <Input
+                      value={workspaceName}
+                      onChange={(e) => setWorkspaceName(e.target.value)}
+                      placeholder={t('or.workspacePlaceholder')}
+                    />
+                  </div>
+                  {cannedTasks.length > 0 && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">{t('cannedTasks.pickTask')}</label>
+                      <Select onValueChange={(taskId) => {
+                        const task = cannedTasks.find((t2) => t2.id === taskId);
+                        if (task) {
+                          setExtraItems([...extraItems, {
+                            description: task.description || task.name,
+                            quantity: 1,
+                            unit_price: task.default_price ?? 0,
+                          }]);
+                        }
+                      }}>
+                        <SelectTrigger>
+                          <SelectValue placeholder={t('cannedTasks.pickPlaceholder')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {cannedTasks.map((task) => (
+                            <SelectItem key={task.id} value={task.id}>
+                              {task.name}{task.default_price != null ? ` — ${formatCHF(task.default_price)}` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {extraItems.length > 0 && (
+                        <div className="space-y-1">
+                          {extraItems.map((it, i) => (
+                            <div key={i} className="flex items-center justify-between text-sm rounded-lg border border-border/40 px-2 py-1.5">
+                              <span>{it.description} ×{it.quantity}</span>
+                              <span className="font-medium">{formatCHF(it.quantity * it.unit_price)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">{t('or.assignMechanic')}</label>
-              <Select value={selectedMechanicId} onValueChange={setSelectedMechanicId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t('or.assignMechanic')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{t('or.noMechanic')}</SelectItem>
-                  {mechanics.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">{t('or.workspace')}</label>
-              <Input
-                value={workspaceName}
-                onChange={(e) => setWorkspaceName(e.target.value)}
-                placeholder={t('or.workspacePlaceholder')}
-              />
-            </div>
-            {cannedTasks.length > 0 && (
+            </TabsContent>
+            <TabsContent value="direct" className="space-y-4 py-2">
               <div className="space-y-2">
-                <label className="text-sm font-medium">{t('cannedTasks.pickTask')}</label>
-                <Select onValueChange={(taskId) => {
-                  const task = cannedTasks.find((t2) => t2.id === taskId);
-                  if (task) {
-                    setExtraItems([...extraItems, {
-                      description: task.description || task.name,
-                      quantity: 1,
-                      unit_price: task.default_price ?? 0,
-                    }]);
-                  }
-                }}>
+                <label className="text-sm font-medium">{t('or.selectClient')}</label>
+                <Select value={selectedClientId} onValueChange={setSelectedClientId}>
                   <SelectTrigger>
-                    <SelectValue placeholder={t('cannedTasks.pickPlaceholder')} />
+                    <SelectValue placeholder={t('or.selectClient')} />
                   </SelectTrigger>
                   <SelectContent>
-                    {cannedTasks.map((task) => (
-                      <SelectItem key={task.id} value={task.id}>
-                        {task.name}{task.default_price != null ? ` — ${formatCHF(task.default_price)}` : ''}
-                      </SelectItem>
+                    {directClients.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.first_name} {c.last_name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {extraItems.length > 0 && (
-                  <div className="space-y-1">
-                    {extraItems.map((it, i) => (
-                      <div key={i} className="flex items-center justify-between text-sm rounded-lg border border-border/40 px-2 py-1.5">
-                        <span>{it.description} ×{it.quantity}</span>
-                        <span className="font-medium">{formatCHF(it.quantity * it.unit_price)}</span>
-                      </div>
-                    ))}
-                  </div>
+                {directClients.length === 0 && (
+                  <p className="text-xs text-muted-foreground">{t('or.noClients')}</p>
                 )}
               </div>
-            )}
-          </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">{t('or.selectVehicle')}</label>
+                <Select value={selectedVehicleId} onValueChange={setSelectedVehicleId} disabled={!selectedClientId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('or.selectVehicle')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {directVehicles.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>{v.brand} {v.model} — {v.license_plate}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedClientId && directVehicles.length === 0 && (
+                  <p className="text-xs text-muted-foreground">{t('or.noVehicles')}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">{t('or.assignMechanic')}</label>
+                <Select value={selectedMechanicId} onValueChange={setSelectedMechanicId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('or.assignMechanic')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t('or.noMechanic')}</SelectItem>
+                    {mechanics.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">{t('or.workspace')}</label>
+                <Input
+                  value={workspaceName}
+                  onChange={(e) => setWorkspaceName(e.target.value)}
+                  placeholder={t('or.workspacePlaceholder')}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">{t('or.description')}</label>
+                <textarea
+                  className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  value={directDescription}
+                  onChange={(e) => setDirectDescription(e.target.value)}
+                  placeholder={t('or.descriptionPlaceholder')}
+                  rows={3}
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateDialog(false)}>{t('common.cancel')}</Button>
-            <Button onClick={handleCreateOR} disabled={submitting || !selectedDevisId}>
-              {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
-              {t('or.create')}
-            </Button>
+            {createMode === 'devis' ? (
+              <Button onClick={handleCreateOR} disabled={submitting || !selectedDevisId}>
+                {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
+                {t('or.create')}
+              </Button>
+            ) : (
+              <Button onClick={handleCreateDirectOR} disabled={submitting || !selectedClientId || !selectedVehicleId || !directDescription.trim()}>
+                {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
+                {t('or.create')}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
