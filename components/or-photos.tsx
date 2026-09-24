@@ -27,7 +27,8 @@ export function OrPhotosSection({ repairOrderId, garageId, readOnly = false }: O
   const [uploading, setUploading] = useState(false);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchPhotos();
@@ -155,12 +156,19 @@ export function OrPhotosSection({ repairOrderId, garageId, readOnly = false }: O
       </div>
 
       {!readOnly && photos.length < MAX_PHOTOS && (
-        <div className="mb-3">
+        <div className="mb-3 flex flex-wrap gap-2">
           <input
-            ref={fileInputRef}
+            ref={cameraInputRef}
             type="file"
             accept="image/*"
             capture="environment"
+            className="hidden"
+            onChange={handleFileSelect}
+          />
+          <input
+            ref={galleryInputRef}
+            type="file"
+            accept="image/*"
             multiple
             className="hidden"
             onChange={handleFileSelect}
@@ -168,11 +176,20 @@ export function OrPhotosSection({ repairOrderId, garageId, readOnly = false }: O
           <Button
             variant="outline"
             size="sm"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => cameraInputRef.current?.click()}
             disabled={uploading}
           >
             {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Camera className="h-4 w-4 mr-2" />}
-            {t('orPhotos.add')}
+            {t('orPhotos.takePhoto')}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => galleryInputRef.current?.click()}
+            disabled={uploading}
+          >
+            {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Camera className="h-4 w-4 mr-2" />}
+            {t('orPhotos.choosePhotos')}
           </Button>
         </div>
       )}
@@ -194,7 +211,7 @@ export function OrPhotosSection({ repairOrderId, garageId, readOnly = false }: O
               {canDelete(photo) && (
                 <button
                   onClick={() => handleDelete(photo)}
-                  className="absolute top-1 right-1 p-1 rounded-md bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-1 right-1 p-1 rounded-md bg-black/60 text-white opacity-100"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>

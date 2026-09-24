@@ -863,6 +863,8 @@ export const translations: Record<Locale, TranslationDict> = {
     // ── Electronic signature ──
     'orPhotos.title': 'Photos',
     'orPhotos.add': 'Ajouter des photos',
+    'orPhotos.takePhoto': 'Prendre une photo',
+    'orPhotos.choosePhotos': 'Choisir des photos',
     'orPhotos.none': 'Aucune photo',
     'orPhotos.maxPhotos': 'Maximum {max} photos par ordre de réparation',
     'orPhotos.onlyImages': 'Seules les images sont autorisées',
@@ -1883,6 +1885,8 @@ export const translations: Record<Locale, TranslationDict> = {
     // ── Electronic signature ──
     'orPhotos.title': 'Fotos',
     'orPhotos.add': 'Fotos hinzufügen',
+    'orPhotos.takePhoto': 'Foto aufnehmen',
+    'orPhotos.choosePhotos': 'Fotos auswählen',
     'orPhotos.none': 'Keine Fotos',
     'orPhotos.maxPhotos': 'Maximal {max} Fotos pro Reparaturauftrag',
     'orPhotos.onlyImages': 'Nur Bilder sind erlaubt',
@@ -2903,6 +2907,8 @@ export const translations: Record<Locale, TranslationDict> = {
     // ── Electronic signature ──
     'orPhotos.title': 'Foto',
     'orPhotos.add': 'Aggiungi foto',
+    'orPhotos.takePhoto': 'Scatta una foto',
+    'orPhotos.choosePhotos': 'Scegli foto',
     'orPhotos.none': 'Nessuna foto',
     'orPhotos.maxPhotos': 'Massimo {max} foto per ordine di riparazione',
     'orPhotos.onlyImages': 'Solo immagini consentite',
@@ -3923,6 +3929,8 @@ export const translations: Record<Locale, TranslationDict> = {
     // ── Electronic signature ──
     'orPhotos.title': 'Photos',
     'orPhotos.add': 'Add photos',
+    'orPhotos.takePhoto': 'Take a photo',
+    'orPhotos.choosePhotos': 'Choose photos',
     'orPhotos.none': 'No photos',
     'orPhotos.maxPhotos': 'Maximum {max} photos per repair order',
     'orPhotos.onlyImages': 'Only images are allowed',
@@ -4943,6 +4951,8 @@ export const translations: Record<Locale, TranslationDict> = {
     // ── Electronic signature ──
     'orPhotos.title': 'Foto',
     'orPhotos.add': 'Shto foto',
+    'orPhotos.takePhoto': 'Bëj një foto',
+    'orPhotos.choosePhotos': 'Zgjidh foto',
     'orPhotos.none': 'Asnjë foto',
     'orPhotos.maxPhotos': 'Maksimum {max} foto për urdhër riparimi',
     'orPhotos.onlyImages': 'Lejohen vetëm imazhet',
