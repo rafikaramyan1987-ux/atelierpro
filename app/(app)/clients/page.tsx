@@ -29,6 +29,7 @@ import { type Client, type Vehicle } from '@/lib/types/database';
 import { Plus, Search, Pencil, Trash2, Users, Car, Loader2, Mail, Phone, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
+import { useAuth } from '@/lib/auth-context';
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<(Client & { vehicles?: Vehicle[]; invoice_count?: number })[]>([]);
@@ -40,6 +41,7 @@ export default function ClientsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const { t } = useI18n();
+  const { profile } = useAuth();
 
   const [form, setForm] = useState({
     company_name: '',
@@ -135,6 +137,7 @@ export default function ClientsPage() {
 
     if (editingClient) {
       const { error } = await supabase.from('clients').update(payload).eq('id', editingClient.id);
+      // garage_id intentionally not updated on edit
       if (error) {
         toast.error('Erreur lors de la modification', { description: error.message });
       } else {
@@ -143,7 +146,7 @@ export default function ClientsPage() {
         fetchClients();
       }
     } else {
-      const { error } = await supabase.from('clients').insert(payload);
+      const { error } = await supabase.from('clients').insert({ ...payload, garage_id: profile?.garage_id ?? null });
       if (error) {
         toast.error('Erreur lors de l\'ajout', { description: error.message });
       } else {
@@ -180,6 +183,7 @@ export default function ClientsPage() {
 
     const { error } = await supabase.from('vehicles').insert({
       client_id: selectedClient.id,
+      garage_id: profile?.garage_id ?? null,
       brand: vehicleForm.brand,
       model: vehicleForm.model,
       license_plate: vehicleForm.license_plate,

@@ -121,7 +121,7 @@ export default function RepairOrdersPage() {
 
   useEffect(() => {
     if (createDialog && createMode === 'direct' && directClients.length === 0) {
-      supabase.from('clients').select('*').eq('garage_id', profile?.garage_id ?? '').order('last_name').then(({ data }) => {
+      supabase.from('clients').select('*').order('last_name').then(({ data }) => {
         setDirectClients(data as Client[] ?? []);
       });
     }
