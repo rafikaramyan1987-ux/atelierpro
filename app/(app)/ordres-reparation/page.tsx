@@ -58,6 +58,7 @@ import {
   type DevisItem,
 } from '@/lib/types/database';
 import { SignaturePad } from '@/components/signature-pad';
+import { OrPhotosSection } from '@/components/or-photos';
 
 export default function RepairOrdersPage() {
   const { profile } = useAuth();
@@ -806,6 +807,14 @@ export default function RepairOrdersPage() {
                     );
                   })()}
                 </div>
+
+                {/* Photos */}
+                {detailsDialog && (
+                  <OrPhotosSection
+                    repairOrderId={detailsDialog.id}
+                    garageId={detailsDialog.garage_id ?? profile?.garage_id ?? ''}
+                  />
+                )}
 
                 {/* Signature */}
                 <div>

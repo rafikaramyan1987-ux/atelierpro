@@ -463,3 +463,13 @@ export interface CannedTask {
   service_group: string | null;
   created_at: string;
 }
+
+export interface OrPhoto {
+  id: string;
+  repair_order_id: string;
+  garage_id: string;
+  storage_path: string;
+  caption: string | null;
+  uploaded_by: string | null;
+  created_at: string;
+}

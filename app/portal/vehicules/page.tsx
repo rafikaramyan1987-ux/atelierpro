@@ -31,8 +31,10 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { type Vehicle, type Invoice } from '@/lib/types/database';
-import { Car, Plus, Loader2, FileText, Calendar, HelpCircle, ChevronsUpDown } from 'lucide-react';
+import { Car, Plus, Loader2, FileText, Calendar, HelpCircle, ChevronsUpDown, Camera } from 'lucide-react';
 import { toast } from 'sonner';
+import { OrPhotosSection } from '@/components/or-photos';
+import type { RepairOrder } from '@/lib/types/database';
 
 const CAR_BRANDS_MODELS: Record<string, string[]> = {
   'Alfa Romeo': ['Giulia', 'Stelvio', 'Giulietta', 'MiTo', '159', 'Brera', 'Spider'],
@@ -75,6 +77,7 @@ export default function ClientVehiclesPage() {
   const { profile } = useAuth();
   const { t } = useI18n();
   const [vehicles, setVehicles] = useState<(Vehicle & { invoices?: Invoice[] })[]>([]);
+  const [repairOrders, setRepairOrders] = useState<Record<string, RepairOrder[]>>({});
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -104,7 +107,26 @@ export default function ClientVehiclesPage() {
       .select('*, invoices(*)')
       .eq('client_id', profile!.client_id)
       .order('created_at', { ascending: false });
-    setVehicles(data as any ?? []);
+    const allVehicles = data as any ?? [];
+    setVehicles(allVehicles);
+
+    const vehicleIds = allVehicles.map((v: any) => v.id);
+    if (vehicleIds.length > 0) {
+      const { data: roData } = await supabase
+        .from('repair_orders')
+        .select('*')
+        .in('vehicle_id', vehicleIds)
+        .order('created_at', { ascending: false });
+      const roMap: Record<string, RepairOrder[]> = {};
+      for (const ro of (roData as RepairOrder[] ?? [])) {
+        if (ro.vehicle_id) {
+          if (!roMap[ro.vehicle_id]) roMap[ro.vehicle_id] = [];
+          roMap[ro.vehicle_id].push(ro);
+        }
+      }
+      setRepairOrders(roMap);
+    }
+
     setLoading(false);
   }
 
@@ -221,6 +243,26 @@ export default function ClientVehiclesPage() {
                             <span className="text-xs text-muted-foreground">{inv.invoice_number}</span>
                           </div>
                         ))}
+                        {(repairOrders[vehicle.id] ?? []).length > 0 && (
+                          <div className="mt-3 pt-3 border-t">
+                            <p className="text-xs font-semibold flex items-center gap-1.5 mb-2">
+                              <Camera className="h-3.5 w-3.5" />
+                              {t('orPhotos.title')}
+                            </p>
+                            <div className="space-y-3">
+                              {(repairOrders[vehicle.id] ?? []).map((ro) => (
+                                <div key={ro.id}>
+                                  <p className="text-xs text-muted-foreground mb-1">{ro.or_number}</p>
+                                  <OrPhotosSection
+                                    repairOrderId={ro.id}
+                                    garageId={ro.garage_id ?? ''}
+                                    readOnly
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
