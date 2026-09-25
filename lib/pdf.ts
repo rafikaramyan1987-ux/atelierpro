@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { SwissQRBill } from 'swissqrbill/svg';
+import { svg2pdf } from 'svg2pdf.js';
 import {
   formatCHF,
   type Invoice,
@@ -36,7 +37,20 @@ function isQRIBAN(iban: string): boolean {
   return n >= 30000 && n <= 31999;
 }
 
-export function generateInvoicePDF(
+function generateQRReference(invoiceNumber: string): string {
+  const digits = invoiceNumber.replace(/\D/g, '');
+  const padded = digits.padStart(26, '0');
+  const table = [0, 9, 4, 6, 8, 2, 7, 1, 3, 5];
+  let carry = 0;
+  for (let i = 0; i < padded.length; i++) {
+    const digit = parseInt(padded[i], 10);
+    carry = table[(carry + digit) % 10];
+  }
+  const checkDigit = (10 - carry) % 10;
+  return padded + checkDigit;
+}
+
+export async function generateInvoicePDF(
   invoice: Invoice,
   client: Client | null,
   vehicle: Vehicle | null,
@@ -206,7 +220,7 @@ export function generateInvoicePDF(
     };
 
     if (isQRIBAN(garage!.iban!)) {
-      qrData.reference = '';
+      qrData.reference = generateQRReference(invoice.invoice_number);
     } else {
       qrData.message = invoice.invoice_number;
     }
@@ -224,14 +238,16 @@ export function generateInvoicePDF(
     try {
       const qrBill = new SwissQRBill(qrData, { language: 'FR', scissors: false });
       const svgString = qrBill.toString();
-      const svgY = totalsY + 55;
 
-      if (svgY + 105 * 2.83465 > pageHeight - 10) {
+      const qrY = 192;
+      const contentEndY = totalsY + 55;
+
+      if (contentEndY > qrY) {
         doc.addPage();
       }
 
-      const yStart = (doc as any).lastAutoTable ? Math.min(svgY, pageHeight - 120) : svgY;
-      addSVGtoPDF(doc, svgString, 0, yStart, pageWidth, 105 * 2.83465);
+      const el = new DOMParser().parseFromString(svgString, 'image/svg+xml').documentElement;
+      await svg2pdf(el, doc, { x: 0, y: qrY, width: 210, height: 105 });
     } catch {
       // If QR bill generation fails, skip it
     }
@@ -257,119 +273,6 @@ export function generateInvoicePDF(
   doc.text('Merci de votre confiance!', pageWidth / 2, footerY + 10, { align: 'center' });
 
   doc.save(`facture-${invoice.invoice_number}.pdf`);
-}
-
-function addSVGtoPDF(doc: jsPDF, svgString: string, x: number, y: number, width: number, height: number) {
-  const parser = new DOMParser();
-  const svgDoc = parser.parseFromString(svgString, 'image/svg+xml');
-  const svgEl = svgDoc.documentElement;
-
-  const svgWidth = 210;
-  const svgHeight = 105;
-  const scale = width / svgWidth;
-  const actualHeight = svgHeight * scale;
-
-  const rects = svgEl.querySelectorAll('rect');
-  const lines = svgEl.querySelectorAll('line');
-  const texts = svgEl.querySelectorAll('text');
-  const paths = svgEl.querySelectorAll('path');
-
-  function mmToPt(mm: number): number {
-    return mm * 2.83465;
-  }
-
-  function parseMm(val: string): number {
-    const m = val.match(/^([\d.]+)mm$/);
-    if (m) return parseFloat(m[1]);
-    const pt = val.match(/^([\d.]+)pt$/);
-    if (pt) return parseFloat(pt[1]) / 2.83465;
-    return parseFloat(val) || 0;
-  }
-
-  function parsePx(val: string): number {
-    const m = val.match(/^([\d.]+)px$/);
-    if (m) return parseFloat(m[1]) / 2.83465;
-    return parseMm(val);
-  }
-
-  const offsetX = x;
-  const offsetY = y;
-
-  for (const rect of Array.from(rects)) {
-    const rx = parseFloat(rect.getAttribute('x') || '0');
-    const ry = parseFloat(rect.getAttribute('y') || '0');
-    const rw = parseFloat(rect.getAttribute('width') || '0');
-    const rh = parseFloat(rect.getAttribute('height') || '0');
-    const fill = rect.getAttribute('fill') || 'black';
-
-    if (fill === 'none') continue;
-
-    const px = offsetX + (rx / svgWidth) * width;
-    const py = offsetY + (ry / svgHeight) * actualHeight;
-    const pw = (rw / svgWidth) * width;
-    const ph = (rh / svgHeight) * actualHeight;
-
-    if (fill === 'white' || fill === '#fff' || fill === '#ffffff') {
-      doc.setFillColor(255, 255, 255);
-    } else if (fill === 'black' || fill === '#000' || fill === '#000000') {
-      doc.setFillColor(0, 0, 0);
-    } else {
-      const hex = fill.replace('#', '');
-      doc.setFillColor(parseInt(hex.substring(0, 2), 16), parseInt(hex.substring(2, 4), 16), parseInt(hex.substring(4, 6), 16));
-    }
-    doc.rect(px, py, pw, ph, 'F');
-  }
-
-  for (const line of Array.from(lines)) {
-    const x1 = parseMm(line.getAttribute('x1') || '0');
-    const y1 = parseMm(line.getAttribute('y1') || '0');
-    const x2 = parseMm(line.getAttribute('x2') || '0');
-    const y2 = parseMm(line.getAttribute('y2') || '0');
-    const sw = parseFloat(line.getAttribute('stroke-width') || '1') / 2.83465;
-
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(sw);
-    const px1 = offsetX + (x1 / svgWidth) * width;
-    const py1 = offsetY + (y1 / svgHeight) * actualHeight;
-    const px2 = offsetX + (x2 / svgWidth) * width;
-    const py2 = offsetY + (y2 / svgHeight) * actualHeight;
-    doc.line(px1, py1, px2, py2);
-  }
-
-  for (const textEl of Array.from(texts)) {
-    const tspans = textEl.querySelectorAll('tspan');
-    let parentX = parseMm(textEl.getAttribute('x') || '0');
-    let parentY = parseMm(textEl.getAttribute('y') || '0');
-
-    let currentX = parentX;
-    let currentY = parentY;
-
-    for (const tspan of Array.from(tspans)) {
-      const tsX = tspan.getAttribute('x');
-      const tsY = tspan.getAttribute('y');
-      const dy = tspan.getAttribute('dy');
-      const fontSize = tspan.getAttribute('font-size') || '8pt';
-      const fontWeight = tspan.getAttribute('font-weight') || 'normal';
-      const textAnchor = tspan.getAttribute('text-anchor') || 'start';
-
-      if (tsX !== null) currentX = parseMm(tsX);
-      if (tsY !== null) currentY = parseMm(tsY);
-      if (dy !== null) currentY += parseFloat(dy) / 2.83465;
-
-      const sizePt = parseFloat(fontSize.replace('pt', '')) || 8;
-      const text = tspan.textContent || '';
-
-      const px = offsetX + (currentX / svgWidth) * width;
-      const py = offsetY + (currentY / svgHeight) * actualHeight;
-
-      doc.setFontSize(sizePt);
-      doc.setFont('helvetica', fontWeight === 'bold' ? 'bold' : 'normal');
-      doc.setTextColor(0, 0, 0);
-
-      const align = textAnchor === 'end' ? 'right' : textAnchor === 'middle' ? 'center' : 'left';
-      doc.text(text, px, py, { align });
-    }
-  }
 }
 
 export function garageToPdfInfo(garage: Garage | null): GaragePdfInfo | null {

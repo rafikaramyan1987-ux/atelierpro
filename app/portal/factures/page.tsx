@@ -72,7 +72,7 @@ export default function ClientInvoicesPage() {
       const { data: g } = await supabase.from('garages').select('*').eq('id', invoice.garage_id).maybeSingle();
       garage = g as Garage | null;
     }
-    generateInvoicePDF(invoice, client as any, invoice.vehicle ?? null, items ?? [], garageToPdfInfo(garage));
+    await generateInvoicePDF(invoice, client as any, invoice.vehicle ?? null, items ?? [], garageToPdfInfo(garage));
     toast.success(t('toast.pdfDownloaded'));
   }
 
