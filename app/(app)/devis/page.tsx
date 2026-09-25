@@ -558,9 +558,10 @@ export default function DevisPage() {
           <Label className="text-xs text-muted-foreground">{isLabor ? t('items.hours') : t('admin.appts.qty')}</Label>
           <Input
             type="number"
-            step="0.5"
+            step="0.25"
             value={item.quantity}
             onChange={(e) => onUpdate(item.id, 'quantity', e.target.value)}
+            onFocus={(e) => e.target.select()}
           />
         </div>
         <div className="w-32 space-y-1.5">

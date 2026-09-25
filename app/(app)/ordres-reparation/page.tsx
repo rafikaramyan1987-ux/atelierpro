@@ -95,18 +95,20 @@ export default function RepairOrdersPage() {
   const [loanerStartDate, setLoanerStartDate] = useState(localDateStr());
   const [loanerEndDate, setLoanerEndDate] = useState(localDateStrPlusDays(3));
   const [cannedTasks, setCannedTasks] = useState<CannedTask[]>([]);
+  const [hourlyRate, setHourlyRate] = useState(120);
   const [extraItems, setExtraItems] = useState<{ description: string; quantity: number; unit_price: number; item_type: ItemType }[]>([]);
   const [devisItems, setDevisItems] = useState<DevisItem[]>([]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const [orRes, devisRes, mechRes, lvRes, laRes, tasksRes] = await Promise.all([
+    const [orRes, devisRes, mechRes, lvRes, laRes, tasksRes, garageRes] = await Promise.all([
       supabase.from('repair_orders').select('*, client:clients(*), vehicle:vehicles(*), assigned_mechanic:profiles!assigned_mechanic_id(*), repair_order_items(*), service_request:service_requests(*)').order('created_at', { ascending: false }),
       supabase.from('service_requests').select('*, client:clients(*), vehicle:vehicles(*), devis_items(*)').eq('status', 'devis_accepte').order('created_at', { ascending: false }),
       supabase.from('profiles').select('*').in('role', ['admin', 'mecanicien']).eq('active', true).eq('garage_id', profile?.garage_id ?? ''),
       supabase.from('loaner_vehicles').select('*').eq('status', 'available').order('make'),
       supabase.from('loaner_assignments').select('*, loaner_vehicle:loaner_vehicles(*), client:clients(*)').eq('status', 'active'),
       supabase.from('canned_tasks').select('*').order('name', { ascending: true }),
+      supabase.from('garages').select('hourly_rate').eq('id', profile?.garage_id ?? '').maybeSingle(),
     ]);
     setOrders(orRes.data as any ?? []);
     setAcceptedDevis(devisRes.data as any ?? []);
@@ -114,6 +116,7 @@ export default function RepairOrdersPage() {
     setLoanerVehicles(lvRes.data as LoanerVehicle[] ?? []);
     setLoanerAssignments(laRes.data as LoanerAssignment[] ?? []);
     setCannedTasks(tasksRes.data as CannedTask[] ?? []);
+    setHourlyRate((garageRes.data as any)?.hourly_rate ?? 120);
     setLoading(false);
   }, []);
 
@@ -646,7 +649,7 @@ export default function RepairOrdersPage() {
                             setExtraItems([...extraItems, {
                               description: task.name,
                               quantity: task.default_labor_hours,
-                              unit_price: task.default_price ?? 0,
+                              unit_price: hourlyRate,
                               item_type: 'main_oeuvre' as ItemType,
                             }]);
                           } else {
@@ -665,7 +668,7 @@ export default function RepairOrdersPage() {
                         <SelectContent>
                           {cannedTasks.map((task) => (
                             <SelectItem key={task.id} value={task.id}>
-                              {task.name}{task.default_price != null ? ` — ${formatCHF(task.default_price)}` : ''}
+                              {task.name}{task.default_labor_hours != null ? ` — ${task.default_labor_hours}h` : task.default_price != null ? ` — ${formatCHF(task.default_price)}` : ''}
                             </SelectItem>
                           ))}
                         </SelectContent>

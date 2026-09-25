@@ -342,9 +342,10 @@ export default function NewInvoicePage() {
                 <Label className="text-xs text-muted-foreground">{item.item_type === 'main_oeuvre' ? t('items.hours') : t('admin.appts.qty')}</Label>
                 <Input
                   type="number"
-                  step="0.5"
+                  step="0.25"
                   value={item.quantity}
                   onChange={(e) => updateItem(item.id, 'quantity', e.target.value)}
+                  onFocus={(e) => e.target.select()}
                 />
               </div>
               <div className="w-32 space-y-1.5">

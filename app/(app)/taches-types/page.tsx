@@ -16,7 +16,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import {
-  ClipboardList, Plus, Pencil, Trash2, Clock, Loader2, CalendarClock, Gauge, Sun, Snowflake, Ban, Package,
+  ClipboardList, Plus, Pencil, Trash2, Clock, Loader2, CalendarClock, Gauge, Sun, Snowflake, Ban, Package, Wrench,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
@@ -41,6 +41,7 @@ export default function CannedTasksPage() {
   const [description, setDescription] = useState('');
   const [duration, setDuration] = useState('');
   const [price, setPrice] = useState('');
+  const [laborHours, setLaborHours] = useState('');
   const [reminderType, setReminderType] = useState<ReminderType>('none');
   const [intervalMonths, setIntervalMonths] = useState('');
   const [intervalKm, setIntervalKm] = useState('');
@@ -71,6 +72,7 @@ export default function CannedTasksPage() {
     setDescription('');
     setDuration('');
     setPrice('');
+    setLaborHours('');
     setReminderType('none');
     setIntervalMonths('');
     setIntervalKm('');
@@ -85,6 +87,7 @@ export default function CannedTasksPage() {
     setDescription(task.description ?? '');
     setDuration(task.estimated_duration_minutes?.toString() ?? '');
     setPrice(task.default_price?.toString() ?? '');
+    setLaborHours(task.default_labor_hours?.toString() ?? '');
     setReminderType(task.reminder_type ?? 'none');
     setIntervalMonths(task.interval_months?.toString() ?? '');
     setIntervalKm(task.interval_km?.toString() ?? '');
@@ -110,6 +113,7 @@ export default function CannedTasksPage() {
       description: description.trim() || null,
       estimated_duration_minutes: duration ? parseInt(duration) : null,
       default_price: price ? parseFloat(price) : null,
+      default_labor_hours: laborHours ? parseFloat(laborHours) : null,
       reminder_type: reminderType,
       interval_months: reminderType === 'interval' && intervalMonths ? parseInt(intervalMonths) : null,
       interval_km: reminderType === 'interval' && intervalKm ? parseInt(intervalKm) : null,
@@ -221,6 +225,12 @@ export default function CannedTasksPage() {
                   {task.default_price != null && (
                     <span className="font-medium text-foreground">{formatCHF(task.default_price)}</span>
                   )}
+                  {task.default_labor_hours != null && (
+                    <span className="flex items-center gap-1">
+                      <Wrench className="h-3 w-3" />
+                      {task.default_labor_hours}h
+                    </span>
+                  )}
                   {task.reminder_type === 'interval' && task.interval_months != null && (
                     <span className="flex items-center gap-1">
                       <CalendarClock className="h-3 w-3" />
@@ -262,7 +272,7 @@ export default function CannedTasksPage() {
               <Label>{t('cannedTasks.description')}</Label>
               <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t('cannedTasks.descriptionPlaceholder')} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div className="space-y-2">
                 <Label>{t('cannedTasks.duration')}</Label>
                 <Input type="number" min="0" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="0" />
@@ -270,6 +280,10 @@ export default function CannedTasksPage() {
               <div className="space-y-2">
                 <Label>{t('cannedTasks.price')}</Label>
                 <Input type="number" step="0.05" min="0" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('cannedTasks.laborHours')}</Label>
+                <Input type="number" step="0.25" min="0" value={laborHours} onChange={(e) => setLaborHours(e.target.value)} placeholder="0.00" />
               </div>
             </div>
 
