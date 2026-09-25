@@ -204,6 +204,7 @@ export async function generateInvoicePDF(
   }
 
   const hasValidIBAN = garage?.iban && isValidIBAN(garage.iban);
+  let qrDrawn = false;
 
   if (hasValidIBAN) {
     const qrData: any = {
@@ -248,12 +249,13 @@ export async function generateInvoicePDF(
 
       const el = new DOMParser().parseFromString(svgString, 'image/svg+xml').documentElement;
       await svg2pdf(el, doc, { x: 0, y: qrY, width: 210, height: 105 });
+      qrDrawn = true;
     } catch {
       // If QR bill generation fails, skip it
     }
   }
 
-  const footerY = pageHeight - 15;
+  const footerY = qrDrawn ? 186 : pageHeight - 15;
   doc.setFontSize(8);
   doc.setTextColor(120, 120, 120);
   const footerParts: string[] = [];
