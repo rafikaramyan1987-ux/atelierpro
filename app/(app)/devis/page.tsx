@@ -75,6 +75,7 @@ export default function DevisPage() {
   const [prefillRequestId, setPrefillRequestId] = useState<string | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [prefillVehicleId, setPrefillVehicleId] = useState<string | null>(null);
   const [parts, setParts] = useState<Part[]>([]);
   const [cannedTasks, setCannedTasks] = useState<CannedTask[]>([]);
   const [garage, setGarage] = useState<Garage | null>(null);
@@ -158,14 +159,20 @@ export default function DevisPage() {
   useEffect(() => {
     if (clientId) {
       supabase.from('vehicles').select('*').eq('client_id', clientId).then(({ data }) => {
-        setVehicles(data as Vehicle[] ?? []);
-        setVehicleId('');
+        const list = (data as Vehicle[]) ?? [];
+        setVehicles(list);
+        if (prefillVehicleId && list.some((v) => v.id === prefillVehicleId)) {
+          setVehicleId(prefillVehicleId);
+          setPrefillVehicleId(null);
+        } else {
+          setVehicleId('');
+        }
       });
     } else {
       setVehicles([]);
       setVehicleId('');
     }
-  }, [clientId]);
+  }, [clientId, prefillVehicleId]);
 
   function addItem() {
     setItems([...items, emptyItem()]);
@@ -258,21 +265,19 @@ export default function DevisPage() {
     setValidUntil(localDateStrPlusDays(30));
     setItems([emptyItem()]);
     setPrefillRequestId(null);
+    setPrefillVehicleId(null);
   }
 
   function openCreateFromRequest(req: ServiceRequest) {
     setPrefillRequestId(req.id);
-    setClientId(req.client_id ?? '');
     setDescription(req.description ?? '');
-    if (req.vehicle_id) {
-      setVehicleId(req.vehicle_id);
-      if (req.client_id) {
-        supabase.from('vehicles').select('*').eq('client_id', req.client_id).then(({ data }) => {
-          setVehicles(data as Vehicle[] ?? []);
-          setVehicleId(req.vehicle_id ?? '');
-        });
-      }
+    if (req.client && !clients.some((c) => c.id === req.client_id)) {
+      setClients((prev) => [...prev, req.client as Client]);
     }
+    if (req.vehicle_id) {
+      setPrefillVehicleId(req.vehicle_id);
+    }
+    setClientId(req.client_id ?? '');
     setItems([emptyItem()]);
     setCreateOpen(true);
   }
@@ -585,7 +590,7 @@ export default function DevisPage() {
     return (
       <div key={item.id} className="flex flex-col sm:flex-row gap-2 items-start sm:items-end">
         <div className="flex-1 min-w-0 space-y-1.5">
-          <Label className="text-xs text-muted-foreground">{t('devisPage.items')} {index + 1}</Label>
+          <Label className="text-xs text-muted-foreground">{t('devisPage.itemLabel')} {index + 1}</Label>
           <div className="flex gap-2">
             <Select
               value={item.item_type}
