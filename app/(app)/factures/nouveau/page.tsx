@@ -244,8 +244,15 @@ export default function NewInvoicePage() {
 
   return (
     <div className="p-6 space-y-6 max-w-5xl">
+      <PageHeader title={t('admin.invoices.new')} description="">
+        <Button variant="outline" onClick={() => router.push('/factures')}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          {t('common.back')}
+        </Button>
+      </PageHeader>
+
       {hasDraft && (
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm">
           <span className="font-medium">{t('draft.found')}</span>
           <div className="flex gap-2">
             <Button size="sm" variant="outline" onClick={restoreDraft}>{t('draft.restore')}</Button>
@@ -253,12 +260,6 @@ export default function NewInvoicePage() {
           </div>
         </div>
       )}
-      <PageHeader title={t('admin.invoices.new')} description="">
-        <Button variant="outline" onClick={() => router.push('/factures')}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          {t('common.back')}
-        </Button>
-      </PageHeader>
 
       {/* Client & vehicle */}
       <Card className="border-border/60">

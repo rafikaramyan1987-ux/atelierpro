@@ -19,20 +19,32 @@ export function useDraftAutoSave<T extends DraftData>(
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipSaveRef = useRef(false);
 
+  const draftHasContent = useCallback((d: T): boolean => {
+    return Object.values(d).some((v) => {
+      if (Array.isArray(v)) return v.length > 0 && v.some((i) => i && typeof i === 'object' && 'description' in i && (i as any).description);
+      if (typeof v === 'string') return v.trim() !== '';
+      return v != null;
+    });
+  }, []);
+
   useEffect(() => {
     if (!userId) return;
     try {
       const stored = localStorage.getItem(storageKey);
       if (stored) {
         const parsed = JSON.parse(stored) as T;
-        setDraftData(parsed);
-        setHasDraft(true);
-        skipSaveRef.current = true;
+        if (draftHasContent(parsed)) {
+          setDraftData(parsed);
+          setHasDraft(true);
+          skipSaveRef.current = true;
+        } else {
+          localStorage.removeItem(storageKey);
+        }
       }
     } catch {
       // ignore parse errors
     }
-  }, [storageKey, userId]);
+  }, [storageKey, userId, draftHasContent]);
 
   useEffect(() => {
     if (!userId) return;

@@ -622,21 +622,22 @@ export default function DevisPage() {
 
   return (
     <div className="p-6 space-y-6">
-      {hasDraft && (
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm">
-          <span className="font-medium">{t('draft.found')}</span>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={restoreDraft}>{t('draft.restore')}</Button>
-            <Button size="sm" variant="ghost" onClick={ignoreDraft}>{t('draft.ignore')}</Button>
-          </div>
-        </div>
-      )}
       <PageHeader title={t('devisPage.title')} description={t('devisPage.desc')}>
         <Button onClick={() => setCreateOpen(true)}>
           <FilePlus2 className="h-4 w-4 mr-2" />
           {t('devisPage.new')}
         </Button>
       </PageHeader>
+
+      {hasDraft && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm">
+          <span className="font-medium">{t('draft.found')}</span>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => { restoreDraft(); setCreateOpen(true); }}>{t('draft.restore')}</Button>
+            <Button size="sm" variant="ghost" onClick={ignoreDraft}>{t('draft.ignore')}</Button>
+          </div>
+        </div>
+      )}
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabKey)}>
         <TabsList>
