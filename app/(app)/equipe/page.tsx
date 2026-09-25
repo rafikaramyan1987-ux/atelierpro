@@ -38,6 +38,7 @@ import { ROLE_LABELS, type Profile, type UserRole } from '@/lib/types/database';
 import { UserCircle, Plus, Loader2, Shield, Wrench, Trash2, Mail, Phone, Briefcase, KeyRound, Copy, CheckCircle2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
+import { FieldHint } from '@/components/ui/field-hint';
 
 export default function EquipePage() {
   const { profile: currentUser } = useAuth();
@@ -340,7 +341,7 @@ export default function EquipePage() {
                           value={member.role}
                           onValueChange={(v) => updateRole(member, v as UserRole)}
                         >
-                          <SelectTrigger className="w-40">
+                          <SelectTrigger className="w-40" placeholder={t('ph.select')}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -468,7 +469,7 @@ export default function EquipePage() {
                   <Input
                     id="member-name"
                     required
-                    placeholder="Jean Dupont"
+                    placeholder={t('ph.employeeFirstName')}
                     value={newMember.full_name}
                     onChange={(e) => setNewMember({ ...newMember, full_name: e.target.value })}
                   />
@@ -481,7 +482,7 @@ export default function EquipePage() {
                       id="member-email"
                       type="email"
                       required
-                      placeholder="membre@atelier.ch"
+                      placeholder={t('ph.employeeEmail')}
                       className="pl-10"
                       value={newMember.email}
                       onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
@@ -495,7 +496,7 @@ export default function EquipePage() {
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="member-phone"
-                        placeholder="+41 79 555 12 34"
+                        placeholder={t('ph.phone')}
                         className="pl-10"
                         value={newMember.phone}
                         onChange={(e) => setNewMember({ ...newMember, phone: e.target.value })}
@@ -508,7 +509,7 @@ export default function EquipePage() {
                       value={newMember.role}
                       onValueChange={(v) => setNewMember({ ...newMember, role: v as UserRole })}
                     >
-                      <SelectTrigger id="member-role">
+                      <SelectTrigger id="member-role" placeholder={t('ph.select')}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

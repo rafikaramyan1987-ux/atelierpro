@@ -41,6 +41,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/auth-context';
+import { FieldHint } from '@/components/ui/field-hint';
 import {
   formatCHF,
   calculateVAT,
@@ -605,7 +606,7 @@ export default function RepairOrdersPage() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium">{t('or.selectDevis')}</label>
                     <Select value={selectedDevisId} onValueChange={setSelectedDevisId}>
-                      <SelectTrigger>
+                      <SelectTrigger placeholder={t('ph.select')}>
                         <SelectValue placeholder={t('or.selectDevis')} />
                       </SelectTrigger>
                       <SelectContent>
@@ -620,7 +621,7 @@ export default function RepairOrdersPage() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium">{t('or.assignMechanic')}</label>
                     <Select value={selectedMechanicId} onValueChange={setSelectedMechanicId}>
-                      <SelectTrigger>
+                      <SelectTrigger placeholder={t('ph.select')}>
                         <SelectValue placeholder={t('or.assignMechanic')} />
                       </SelectTrigger>
                       <SelectContent>
@@ -662,7 +663,7 @@ export default function RepairOrdersPage() {
                           }
                         }
                       }}>
-                        <SelectTrigger>
+                        <SelectTrigger placeholder={t('ph.select')}>
                           <SelectValue placeholder={t('cannedTasks.pickPlaceholder')} />
                         </SelectTrigger>
                         <SelectContent>
@@ -692,7 +693,7 @@ export default function RepairOrdersPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">{t('or.selectClient')}</label>
                 <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-                  <SelectTrigger>
+                  <SelectTrigger placeholder={t('ph.selectClient')}>
                     <SelectValue placeholder={t('or.selectClient')} />
                   </SelectTrigger>
                   <SelectContent>
@@ -708,7 +709,7 @@ export default function RepairOrdersPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">{t('or.selectVehicle')}</label>
                 <Select value={selectedVehicleId} onValueChange={setSelectedVehicleId} disabled={!selectedClientId}>
-                  <SelectTrigger>
+                  <SelectTrigger placeholder={t('ph.selectVehicle')}>
                     <SelectValue placeholder={t('or.selectVehicle')} />
                   </SelectTrigger>
                   <SelectContent>
@@ -724,7 +725,7 @@ export default function RepairOrdersPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">{t('or.assignMechanic')}</label>
                 <Select value={selectedMechanicId} onValueChange={setSelectedMechanicId}>
-                  <SelectTrigger>
+                  <SelectTrigger placeholder={t('ph.select')}>
                     <SelectValue placeholder={t('or.assignMechanic')} />
                   </SelectTrigger>
                   <SelectContent>
@@ -749,7 +750,7 @@ export default function RepairOrdersPage() {
                   className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   value={directDescription}
                   onChange={(e) => setDirectDescription(e.target.value)}
-                  placeholder={t('or.descriptionPlaceholder')}
+                  placeholder={t('ph.problemDesc')}
                   rows={3}
                 />
               </div>
@@ -813,7 +814,7 @@ export default function RepairOrdersPage() {
             <div className="space-y-2">
               <label className="text-sm font-medium">{t('or.payerType')}</label>
               <Select value={payerType} onValueChange={(v: any) => setPayerType(v)}>
-                <SelectTrigger>
+                <SelectTrigger placeholder={t('ph.select')}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -993,7 +994,7 @@ export default function RepairOrdersPage() {
                     return (
                       <div className="space-y-2">
                         <Select value={selectedLoanerId} onValueChange={setSelectedLoanerId}>
-                          <SelectTrigger><SelectValue placeholder={t('loaner.selectLoaner')} /></SelectTrigger>
+                          <SelectTrigger placeholder={t('ph.select')}><SelectValue placeholder={t('loaner.selectLoaner')} /></SelectTrigger>
                           <SelectContent>
                             {loanerVehicles.map((lv) => (
                               <SelectItem key={lv.id} value={lv.id}>{lv.make} {lv.model} — {lv.license_plate}</SelectItem>

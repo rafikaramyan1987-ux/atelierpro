@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/auth-context';
 import { useI18n } from '@/lib/i18n/context';
+import { FieldHint } from '@/components/ui/field-hint';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -143,18 +144,18 @@ export default function CommandesPiecesPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t('partsOrders.partName')} *</label>
-                  <Input value={partName} onChange={(e) => setPartName(e.target.value)} placeholder={t('partsOrders.partNamePlaceholder')} required />
+                  <Input value={partName} onChange={(e) => setPartName(e.target.value)} placeholder={t('ph.partName')} required />
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t('partsOrders.reference')}</label>
-                  <Input value={partReference} onChange={(e) => setPartReference(e.target.value)} placeholder={t('partsOrders.referencePlaceholder')} />
+                  <Input value={partReference} onChange={(e) => setPartReference(e.target.value)} placeholder={t('ph.partRef')} />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">{t('partsOrders.quantity')}</label>
-                    <Input type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+                    <Input type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder={t('ph.quantity')} />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">{t('partsOrders.urgency')}</label>

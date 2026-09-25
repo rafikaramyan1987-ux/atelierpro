@@ -20,6 +20,7 @@ import {
 import { supabase } from '@/lib/supabase/client';
 import { Wrench, Mail, Lock, User, Loader2, ArrowRight, Car, Phone, ArrowLeft, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { LanguageSwitcher } from '@/components/language-switcher';
+import { FieldHint } from '@/components/ui/field-hint';
 import { toast } from 'sonner';
 
 export default function LoginPage() {
@@ -273,7 +274,7 @@ export default function LoginPage() {
                       <Label htmlFor="signin-email">{t('login.email')}</Label>
                       <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="signin-email" type="email" placeholder="vous@atelier.ch" className="pl-10" value={signInEmail} onChange={(e) => setSignInEmail(e.target.value)} required />
+                        <Input id="signin-email" type="email" placeholder={t('ph.email')} className="pl-10" value={signInEmail} onChange={(e) => setSignInEmail(e.target.value)} required />
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -289,7 +290,7 @@ export default function LoginPage() {
                       </div>
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="signin-password" type="password" placeholder="••••••••" className="pl-10" value={signInPassword} onChange={(e) => setSignInPassword(e.target.value)} required />
+                        <Input id="signin-password" type="password" placeholder={t('ph.password')} className="pl-10" value={signInPassword} onChange={(e) => setSignInPassword(e.target.value)} required />
                       </div>
                     </div>
                     <Button type="submit" className="w-full" disabled={submitting}>
@@ -308,21 +309,21 @@ export default function LoginPage() {
                       <Label htmlFor="signup-name">{t('login.fullName')}</Label>
                       <div className="relative">
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="signup-name" type="text" placeholder="Jean Dupont" className="pl-10" value={signUpName} onChange={(e) => setSignUpName(e.target.value)} required />
+                        <Input id="signup-name" type="text" placeholder={t('ph.firstName')} className="pl-10" value={signUpName} onChange={(e) => setSignUpName(e.target.value)} required />
                       </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="signup-email">{t('login.email')}</Label>
                       <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="signup-email" type="email" placeholder="vous@atelier.ch" className="pl-10" value={signUpEmail} onChange={(e) => setSignUpEmail(e.target.value)} required />
+                        <Input id="signup-email" type="email" placeholder={t('ph.email')} className="pl-10" value={signUpEmail} onChange={(e) => setSignUpEmail(e.target.value)} required />
                       </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="signup-password">{t('login.password')}</Label>
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="signup-password" type="password" placeholder="Min. 6" className="pl-10" value={signUpPassword} onChange={(e) => setSignUpPassword(e.target.value)} required minLength={6} />
+                        <Input id="signup-password" type="password" placeholder={t('ph.password')} className="pl-10" value={signUpPassword} onChange={(e) => setSignUpPassword(e.target.value)} required minLength={6} />
                       </div>
                       <p className="text-xs text-muted-foreground">{t('login.passwordHint')}</p>
                     </div>
@@ -341,41 +342,41 @@ export default function LoginPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
                         <Label htmlFor="client-first">{t('login.firstName')} *</Label>
-                        <Input id="client-first" required value={clientFirstName} onChange={(e) => setClientFirstName(e.target.value)} placeholder="Sophie" />
+                        <Input id="client-first" required value={clientFirstName} onChange={(e) => setClientFirstName(e.target.value)} placeholder={t('ph.firstName')} />
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor="client-last">{t('login.lastName')} *</Label>
-                        <Input id="client-last" required value={clientLastName} onChange={(e) => setClientLastName(e.target.value)} placeholder="Rochat" />
+                        <Input id="client-last" required value={clientLastName} onChange={(e) => setClientLastName(e.target.value)} placeholder={t('ph.lastName')} />
                       </div>
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="client-email">{t('login.email')} *</Label>
                       <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="client-email" type="email" required className="pl-10" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} placeholder="sophie@email.ch" />
+                        <Input id="client-email" type="email" required className="pl-10" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} placeholder={t('ph.email')} />
                       </div>
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="client-phone">{t('login.phone')} *</Label>
                       <div className="relative">
                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="client-phone" required className="pl-10" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} placeholder="+41 79 555 12 34" />
+                        <Input id="client-phone" required className="pl-10" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} placeholder={t('ph.phone')} />
                       </div>
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="client-password">{t('login.password')} *</Label>
                       <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="client-password" type="password" required minLength={6} className="pl-10" value={clientPassword} onChange={(e) => setClientPassword(e.target.value)} placeholder="Min. 6" />
+                        <Input id="client-password" type="password" required minLength={6} className="pl-10" value={clientPassword} onChange={(e) => setClientPassword(e.target.value)} placeholder={t('ph.password')} />
                       </div>
                       <p className="text-xs text-muted-foreground">{t('login.passwordHint')}</p>
                     </div>
                     <div className="pt-2 border-t border-border/40">
                       <p className="text-xs font-medium text-muted-foreground mb-2">{t('login.yourVehicle')}</p>
                       <div className="grid grid-cols-3 gap-2">
-                        <Input placeholder={t('vehicles.brand')} value={clientBrand} onChange={(e) => setClientBrand(e.target.value)} />
-                        <Input placeholder={t('vehicles.model')} value={clientModel} onChange={(e) => setClientModel(e.target.value)} />
-                        <Input placeholder="VD 123 456" value={clientPlate} onChange={(e) => setClientPlate(e.target.value)} />
+                        <Input placeholder={t('ph.brand')} value={clientBrand} onChange={(e) => setClientBrand(e.target.value)} />
+                        <Input placeholder={t('ph.model')} value={clientModel} onChange={(e) => setClientModel(e.target.value)} />
+                        <Input placeholder={t('ph.plate')} value={clientPlate} onChange={(e) => setClientPlate(e.target.value)} />
                       </div>
                     </div>
                     <Button type="submit" className="w-full" disabled={submitting}>
@@ -433,7 +434,7 @@ export default function LoginPage() {
                 <Label htmlFor="reset-email">{t('login.email')}</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input id="reset-email" type="email" required className="pl-10" placeholder="vous@email.ch" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} />
+                  <Input id="reset-email" type="email" required className="pl-10" placeholder={t('ph.email')} value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} />
                 </div>
               </div>
               <DialogFooter>

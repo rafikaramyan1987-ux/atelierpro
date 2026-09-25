@@ -36,6 +36,7 @@ import { formatCHF, type Part } from '@/lib/types/database';
 import { Plus, Search, Pencil, Trash2, Package, AlertTriangle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
+import { FieldHint } from '@/components/ui/field-hint';
 
 export default function StockPage() {
   const [parts, setParts] = useState<Part[]>([]);
@@ -227,14 +228,14 @@ export default function StockPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Rechercher par nom ou référence..."
+            placeholder={t('ph.partName')}
             className="pl-10"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-full sm:w-48">
+          <SelectTrigger className="w-full sm:w-48" placeholder={t('ph.select')}>
             <SelectValue placeholder={t('stock.category')} />
           </SelectTrigger>
           <SelectContent>
@@ -342,7 +343,7 @@ export default function StockPage() {
                 <Input
                   id="reference"
                   required
-                  placeholder="REF-001"
+                  placeholder={t('ph.partRef')}
                   value={form.reference}
                   onChange={(e) => setForm({ ...form, reference: e.target.value })}
                 />
@@ -352,7 +353,7 @@ export default function StockPage() {
                 <Input
                   id="name"
                   required
-                  placeholder="Plaquettes de frein avant"
+                  placeholder={t('ph.partName')}
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                 />
@@ -363,7 +364,7 @@ export default function StockPage() {
               <Label htmlFor="description">{t('stock.description')}</Label>
               <Textarea
                 id="description"
-                placeholder="Description de la pièce..."
+                placeholder={t('ph.notes')}
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
               />
@@ -373,7 +374,7 @@ export default function StockPage() {
               <div className="space-y-2">
                 <Label htmlFor="category">{t('stock.category')}</Label>
                 <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
-                  <SelectTrigger id="category">
+                  <SelectTrigger id="category" placeholder={t('ph.select')}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -390,7 +391,7 @@ export default function StockPage() {
                   type="number"
                   step="0.05"
                   required
-                  placeholder="0.00"
+                  placeholder={t('ph.salePrice')}
                   value={form.unit_price}
                   onChange={(e) => setForm({ ...form, unit_price: e.target.value })}
                 />
@@ -403,7 +404,7 @@ export default function StockPage() {
                 <Input
                   id="stock_quantity"
                   type="number"
-                  placeholder="0"
+                  placeholder={t('ph.quantity')}
                   value={form.stock_quantity}
                   onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })}
                 />
@@ -422,7 +423,7 @@ export default function StockPage() {
                 <Label htmlFor="location">{t('stock.location')}</Label>
                 <Input
                   id="location"
-                  placeholder="Étagère A-3"
+                  placeholder={t('ph.partName')}
                   value={form.location}
                   onChange={(e) => setForm({ ...form, location: e.target.value })}
                 />
@@ -433,7 +434,7 @@ export default function StockPage() {
               <Label htmlFor="supplier">{t('stock.supplier')}</Label>
               <Input
                 id="supplier"
-                placeholder="Nom du fournisseur"
+                placeholder={t('ph.supplier')}
                 value={form.supplier}
                 onChange={(e) => setForm({ ...form, supplier: e.target.value })}
               />

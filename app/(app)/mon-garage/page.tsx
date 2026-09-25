@@ -15,6 +15,7 @@ import { type Garage, SERVICE_TYPES } from '@/lib/types/database';
 import { Wrench, Save, Loader2, MapPin, Phone, Mail, Star, CheckCircle2, Store, Snowflake, Eye, AlertCircle, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { FieldHint } from '@/components/ui/field-hint';
 
 const SERVICE_KEY: Record<string, string> = {
   'Vidange': 'service.vidange', 'Freinage': 'service.freinage', 'Pneus': 'service.pneus',
@@ -213,7 +214,7 @@ export default function MonGaragePage() {
             <CardContent className="p-6 space-y-5">
               <div className="space-y-2">
                 <label className="text-sm font-medium">{t('garageProfile.name')} *</label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('garageProfile.name')} />
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('ph.garageName')} />
               </div>
 
               <div className="space-y-2">
@@ -221,7 +222,7 @@ export default function MonGaragePage() {
                 <Textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder={t('garageProfile.descriptionPlaceholder')}
+                  placeholder={t('ph.garageDescription')}
                   rows={4}
                 />
               </div>
@@ -229,23 +230,23 @@ export default function MonGaragePage() {
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t('garageProfile.address')}</label>
-                  <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder={t('garageProfile.address')} />
+                  <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder={t('ph.garageAddress')} />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t('garageProfile.postalCode')}</label>
-                  <Input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder={t('garageProfile.postalCode')} />
+                  <Input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder={t('ph.garagePostalCode')} />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t('garageProfile.city')}</label>
-                  <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder={t('garageProfile.city')} />
+                  <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder={t('ph.garageCity')} />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t('garageProfile.phone')}</label>
-                  <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t('garageProfile.phone')} />
+                  <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t('ph.garagePhone')} />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t('garageProfile.email')}</label>
-                  <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('garageProfile.email')} />
+                  <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('ph.garageEmail')} />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t('garageProfile.logoUrl')}</label>
@@ -259,10 +260,11 @@ export default function MonGaragePage() {
                       setIban(e.target.value);
                       if (ibanError) setIbanError('');
                     }}
-                    placeholder="CH93 0076 2011 6238 5295 7"
+                    placeholder={t('ph.garageIban')}
                     className={ibanError ? 'border-destructive' : ''}
                   />
                   {ibanError && <p className="text-xs text-destructive">{ibanError}</p>}
+                  <FieldHint>{t('hint.iban')}</FieldHint>
                   <div className="flex items-start gap-2 rounded-lg bg-warning/5 border border-warning/20 p-3 text-sm">
                     <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
                     <p className="text-muted-foreground">{t('garageProfile.ibanWarning')}</p>
@@ -270,11 +272,13 @@ export default function MonGaragePage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t('garageProfile.vatNumber')}</label>
-                  <Input value={vatNumber} onChange={(e) => setVatNumber(e.target.value)} placeholder="CHE-123.456.789 TVA" />
+                  <Input value={vatNumber} onChange={(e) => setVatNumber(e.target.value)} placeholder={t('ph.garageVat')} />
+                  <FieldHint>{t('hint.vatNumber')}</FieldHint>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t('garageProfile.hourlyRate')}</label>
-                  <Input type="number" min="0" step="0.5" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} placeholder="120" />
+                  <Input type="number" min="0" step="0.5" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} placeholder={t('ph.garageHourlyRate')} />
+                  <FieldHint>{t('hint.hourlyRate')}</FieldHint>
                 </div>
               </div>
 

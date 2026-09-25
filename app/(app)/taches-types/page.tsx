@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/auth-context';
 import { formatCHF, type CannedTask, type ReminderType } from '@/lib/types/database';
+import { FieldHint } from '@/components/ui/field-hint';
 
 const MONTHS = [
   { value: 1, key: 'month.jan' }, { value: 2, key: 'month.feb' }, { value: 3, key: 'month.mar' },
@@ -266,24 +267,24 @@ export default function CannedTasksPage() {
           <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto">
             <div className="space-y-2">
               <Label>{t('cannedTasks.name')}</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('cannedTasks.namePlaceholder')} />
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('ph.taskLabel')} />
             </div>
             <div className="space-y-2">
               <Label>{t('cannedTasks.description')}</Label>
-              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t('cannedTasks.descriptionPlaceholder')} />
+              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t('ph.notes')} />
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-2">
                 <Label>{t('cannedTasks.duration')}</Label>
-                <Input type="number" min="0" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="0" />
+                <Input type="number" min="0" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder={t('ph.taskDuration')} />
               </div>
               <div className="space-y-2">
                 <Label>{t('cannedTasks.price')}</Label>
-                <Input type="number" step="0.05" min="0" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" />
+                <Input type="number" step="0.05" min="0" value={price} onChange={(e) => setPrice(e.target.value)} placeholder={t('ph.taskPrice')} />
               </div>
               <div className="space-y-2">
                 <Label>{t('cannedTasks.laborHours')}</Label>
-                <Input type="number" step="0.25" min="0" value={laborHours} onChange={(e) => setLaborHours(e.target.value)} placeholder="0.00" />
+                <Input type="number" step="0.25" min="0" value={laborHours} onChange={(e) => setLaborHours(e.target.value)} placeholder={t('ph.hours')} />
               </div>
             </div>
 

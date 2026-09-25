@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Lock, Loader2, AlertCircle } from 'lucide-react';
+import { FieldHint } from '@/components/ui/field-hint';
 import { toast } from 'sonner';
 
 export default function ResetPasswordPage() {
@@ -137,7 +138,7 @@ export default function ResetPasswordPage() {
                     type="password"
                     required
                     minLength={8}
-                    placeholder="••••••••"
+                    placeholder={t('ph.password')}
                     className="pl-10"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
@@ -153,7 +154,7 @@ export default function ResetPasswordPage() {
                     type="password"
                     required
                     minLength={8}
-                    placeholder="••••••••"
+                    placeholder={t('ph.password')}
                     className="pl-10"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}

@@ -30,6 +30,7 @@ import { Plus, Search, Pencil, Trash2, Users, Car, Loader2, Mail, Phone, MapPin 
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/auth-context';
+import { FieldHint } from '@/components/ui/field-hint';
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<(Client & { vehicles?: Vehicle[]; invoice_count?: number })[]>([]);
@@ -378,44 +379,44 @@ export default function ClientsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="c-first">{t('clients.firstName')} *</Label>
-                <Input id="c-first" required value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} />
+                <Input id="c-first" required value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} placeholder={t('ph.firstName')} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="c-last">{t('clients.lastName')} *</Label>
-                <Input id="c-last" required value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} />
+                <Input id="c-last" required value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} placeholder={t('ph.lastName')} />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="c-company">{t('clients.company')} ({t('common.optional')})</Label>
-              <Input id="c-company" placeholder="Garage Dupont SA" value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} />
+              <Input id="c-company" placeholder={t('ph.company')} value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="c-phone">{t('login.phone')} *</Label>
-                <Input id="c-phone" required placeholder="+41 79 555 12 34" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                <Input id="c-phone" required placeholder={t('ph.phone')} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="c-email">{t('team.email')}</Label>
-                <Input id="c-email" type="email" placeholder="client@email.ch" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                <Input id="c-email" type="email" placeholder={t('ph.email')} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="c-address">{t('clients.address')}</Label>
-              <Input id="c-address" placeholder="Rue du Rhône 12" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+              <Input id="c-address" placeholder={t('ph.address')} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="c-postal">{t('clients.postalCode')}</Label>
-                <Input id="c-postal" placeholder="1200" value={form.postal_code} onChange={(e) => setForm({ ...form, postal_code: e.target.value })} />
+                <Input id="c-postal" placeholder={t('ph.postalCode')} value={form.postal_code} onChange={(e) => setForm({ ...form, postal_code: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="c-city">{t('clients.city')}</Label>
-                <Input id="c-city" placeholder="Genève" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+                <Input id="c-city" placeholder={t('ph.city')} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="c-notes">{t('clients.notes')}</Label>
-              <Textarea id="c-notes" placeholder="Notes sur le client..." value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+              <Textarea id="c-notes" placeholder={t('ph.notes')} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>{t('common.cancel')}</Button>
@@ -438,36 +439,37 @@ export default function ClientsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="v-brand">{t('clients.brand')} *</Label>
-                <Input id="v-brand" required placeholder="Volkswagen" value={vehicleForm.brand} onChange={(e) => setVehicleForm({ ...vehicleForm, brand: e.target.value })} />
+                <Input id="v-brand" required placeholder={t('ph.brand')} value={vehicleForm.brand} onChange={(e) => setVehicleForm({ ...vehicleForm, brand: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="v-model">{t('clients.model')} *</Label>
-                <Input id="v-model" required placeholder="Golf 8" value={vehicleForm.model} onChange={(e) => setVehicleForm({ ...vehicleForm, model: e.target.value })} />
+                <Input id="v-model" required placeholder={t('ph.model')} value={vehicleForm.model} onChange={(e) => setVehicleForm({ ...vehicleForm, model: e.target.value })} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="v-plate">{t('clients.plate')} *</Label>
-                <Input id="v-plate" required placeholder="VD 123456" value={vehicleForm.license_plate} onChange={(e) => setVehicleForm({ ...vehicleForm, license_plate: e.target.value })} />
+                <Input id="v-plate" required placeholder={t('ph.plate')} value={vehicleForm.license_plate} onChange={(e) => setVehicleForm({ ...vehicleForm, license_plate: e.target.value })} />
+                <FieldHint>{t('hint.plate')}</FieldHint>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="v-vin">VIN</Label>
-                <Input id="v-vin" placeholder="WVWZZZ..." value={vehicleForm.vin} onChange={(e) => setVehicleForm({ ...vehicleForm, vin: e.target.value })} />
+                <Input id="v-vin" placeholder={t('ph.vin')} value={vehicleForm.vin} onChange={(e) => setVehicleForm({ ...vehicleForm, vin: e.target.value })} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="v-year">{t('clients.year')}</Label>
-                <Input id="v-year" type="number" placeholder="2023" value={vehicleForm.year} onChange={(e) => setVehicleForm({ ...vehicleForm, year: e.target.value })} />
+                <Input id="v-year" type="number" placeholder={t('ph.year')} value={vehicleForm.year} onChange={(e) => setVehicleForm({ ...vehicleForm, year: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="v-mileage">{t('clients.mileage')}</Label>
-                <Input id="v-mileage" type="number" placeholder="45000" value={vehicleForm.mileage} onChange={(e) => setVehicleForm({ ...vehicleForm, mileage: e.target.value })} />
+                <Input id="v-mileage" type="number" placeholder={t('ph.mileage')} value={vehicleForm.mileage} onChange={(e) => setVehicleForm({ ...vehicleForm, mileage: e.target.value })} />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="v-notes">{t('clients.notes')}</Label>
-              <Textarea id="v-notes" placeholder="Notes sur le véhicule..." value={vehicleForm.notes} onChange={(e) => setVehicleForm({ ...vehicleForm, notes: e.target.value })} />
+              <Textarea id="v-notes" placeholder={t('ph.notes')} value={vehicleForm.notes} onChange={(e) => setVehicleForm({ ...vehicleForm, notes: e.target.value })} />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setVehicleDialogOpen(false)}>{t('common.cancel')}</Button>

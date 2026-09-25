@@ -34,6 +34,7 @@ import { type Vehicle, type Invoice } from '@/lib/types/database';
 import { Car, Plus, Loader2, FileText, Calendar, HelpCircle, ChevronsUpDown, Camera } from 'lucide-react';
 import { toast } from 'sonner';
 import { OrPhotosSection } from '@/components/or-photos';
+import { FieldHint } from '@/components/ui/field-hint';
 import type { RepairOrder } from '@/lib/types/database';
 
 const CAR_BRANDS_MODELS: Record<string, string[]> = {
@@ -286,7 +287,7 @@ export default function ClientVehiclesPage() {
               <div className="space-y-2">
                 <Label htmlFor="v-brand">{t('vehicles.brand')} *</Label>
                 <Select value={form.brand || 'none'} onValueChange={handleBrandChange}>
-                  <SelectTrigger id="v-brand">
+                  <SelectTrigger id="v-brand" placeholder={t('ph.select')}>
                     <SelectValue placeholder={t('vehicles.selectBrand')} />
                   </SelectTrigger>
                   <SelectContent>
@@ -312,7 +313,7 @@ export default function ClientVehiclesPage() {
                 </div>
                 {form.brand && !useManualModel && availableModels.length > 0 ? (
                   <Select value={form.model || 'none'} onValueChange={(v) => setForm({ ...form, model: v })}>
-                    <SelectTrigger id="v-model">
+                    <SelectTrigger id="v-model" placeholder={t('ph.select')}>
                       <SelectValue placeholder={t('vehicles.selectModel')} />
                     </SelectTrigger>
                     <SelectContent>
@@ -325,7 +326,7 @@ export default function ClientVehiclesPage() {
                   <Input
                     id="v-model"
                     required
-                    placeholder={form.brand ? "Saisir le modèle" : "Sélectionner d'abord une marque"}
+                    placeholder={t('ph.model')}
                     value={form.model}
                     onChange={(e) => setForm({ ...form, model: e.target.value })}
                     disabled={!form.brand}
@@ -353,7 +354,7 @@ export default function ClientVehiclesPage() {
               </div>
               <Input
                 id="v-reception"
-                placeholder="ex: 1T51 03"
+                placeholder={t('ph.partRef')}
                 value={form.type_approval_number}
                 onChange={(e) => setForm({ ...form, type_approval_number: e.target.value })}
               />
@@ -363,21 +364,22 @@ export default function ClientVehiclesPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="v-plate">{t('vehicles.plate')} *</Label>
-                <Input id="v-plate" required placeholder="VD 123 456" value={form.license_plate} onChange={(e) => setForm({ ...form, license_plate: e.target.value })} />
+                <Input id="v-plate" required placeholder={t('ph.plate')} value={form.license_plate} onChange={(e) => setForm({ ...form, license_plate: e.target.value })} />
+                <FieldHint>{t('hint.plate')}</FieldHint>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="v-vin">{t('vehicles.vin')}</Label>
-                <Input id="v-vin" placeholder="WVWZZZ..." value={form.vin} onChange={(e) => setForm({ ...form, vin: e.target.value })} />
+                <Input id="v-vin" placeholder={t('ph.vin')} value={form.vin} onChange={(e) => setForm({ ...form, vin: e.target.value })} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="v-year">{t('vehicles.year')}</Label>
-                <Input id="v-year" type="number" placeholder="2023" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} />
+                <Input id="v-year" type="number" placeholder={t('ph.year')} value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="v-mileage">{t('vehicles.mileage')}</Label>
-                <Input id="v-mileage" type="number" placeholder="45000" value={form.mileage} onChange={(e) => setForm({ ...form, mileage: e.target.value })} />
+                <Input id="v-mileage" type="number" placeholder={t('ph.mileage')} value={form.mileage} onChange={(e) => setForm({ ...form, mileage: e.target.value })} />
               </div>
             </div>
             <DialogFooter>

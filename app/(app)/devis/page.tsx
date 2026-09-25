@@ -46,6 +46,7 @@ import { Plus, Trash2, Loader2, FileDown, Check, X, FilePlus2 } from 'lucide-rea
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/auth-context';
+import { FieldHint } from '@/components/ui/field-hint';
 import { localDateStrPlusDays, formatQty } from '@/lib/utils';
 import { useDraftAutoSave } from '@/hooks/use-draft-autosave';
 import { generateDevisPDF, garageToPdfInfo } from '@/lib/pdf';
@@ -616,7 +617,7 @@ export default function DevisPage() {
                 }
               }}
             >
-              <SelectTrigger className="flex-1">
+              <SelectTrigger className="flex-1" placeholder={t('ph.select')}>
                 <SelectValue placeholder={t('invNew.selectTask')} />
               </SelectTrigger>
               <SelectContent>
@@ -636,7 +637,7 @@ export default function DevisPage() {
             </Select>
           </div>
           <Input
-            placeholder={t('invNew.itemDesc')}
+            placeholder={isLabor ? t('ph.laborDesc') : t('ph.partDesc')}
             value={item.description}
             onChange={(e) => onUpdate(item.id, 'description', e.target.value)}
           />
@@ -646,17 +647,19 @@ export default function DevisPage() {
           <Input
             type="number"
             step="0.25"
+            placeholder={isLabor ? t('ph.hours') : t('ph.quantity')}
             value={item.quantity}
             onChange={(e) => onUpdate(item.id, 'quantity', e.target.value)}
             onFocus={(e) => e.target.select()}
           />
+          {isLabor && <FieldHint>{t('hint.laborLine')}</FieldHint>}
         </div>
         <div className="w-32 space-y-1.5">
           <Label className="text-xs text-muted-foreground">{t('admin.appts.unitPrice')}</Label>
           <Input
             type="number"
             step="0.05"
-            placeholder="0.00"
+            placeholder={isLabor ? t('ph.hourlyRate') : t('ph.unitPrice')}
             value={item.unit_price}
             onChange={(e) => onUpdate(item.id, 'unit_price', e.target.value)}
           />
@@ -876,7 +879,7 @@ export default function DevisPage() {
               <div className="space-y-2">
                 <Label>{t('devisPage.selectClient')}</Label>
                 <Select value={clientId} onValueChange={setClientId}>
-                  <SelectTrigger><SelectValue placeholder={t('devisPage.selectClient')} /></SelectTrigger>
+                  <SelectTrigger placeholder={t('ph.selectClient')}><SelectValue placeholder={t('devisPage.selectClient')} /></SelectTrigger>
                   <SelectContent>
                     {clients.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
@@ -889,7 +892,7 @@ export default function DevisPage() {
               <div className="space-y-2">
                 <Label>{t('devisPage.selectVehicle')}</Label>
                 <Select value={vehicleId} onValueChange={setVehicleId} disabled={!clientId}>
-                  <SelectTrigger><SelectValue placeholder={t('devisPage.selectVehicle')} /></SelectTrigger>
+                  <SelectTrigger placeholder={t('ph.selectVehicle')}><SelectValue placeholder={t('devisPage.selectVehicle')} /></SelectTrigger>
                   <SelectContent>
                     {vehicles.map((v) => (
                       <SelectItem key={v.id} value={v.id}>
@@ -904,7 +907,7 @@ export default function DevisPage() {
             <div className="space-y-2">
               <Label>{t('devisPage.description')}</Label>
               <Textarea
-                placeholder={t('devisPage.descriptionPlaceholder')}
+                placeholder={t('ph.notes')}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
