@@ -59,7 +59,7 @@ interface FormItem {
   item_type: ItemType;
 }
 
-type TabKey = 'pending' | 'sent' | 'accepted' | 'refused';
+type TabKey = 'requests' | 'pending' | 'sent' | 'accepted' | 'refused';
 
 function emptyItem(): FormItem {
   return { id: crypto.randomUUID(), part_id: null, description: '', quantity: '1', unit_price: '', item_type: 'piece' };
@@ -71,12 +71,14 @@ export default function DevisPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [devisList, setDevisList] = useState<ServiceRequest[]>([]);
+  const [clientRequests, setClientRequests] = useState<ServiceRequest[]>([]);
+  const [prefillRequestId, setPrefillRequestId] = useState<string | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [parts, setParts] = useState<Part[]>([]);
   const [cannedTasks, setCannedTasks] = useState<CannedTask[]>([]);
   const [garage, setGarage] = useState<Garage | null>(null);
-  const [activeTab, setActiveTab] = useState<TabKey>('pending');
+  const [activeTab, setActiveTab] = useState<TabKey>('requests');
 
   const [createOpen, setCreateOpen] = useState(false);
   const [clientId, setClientId] = useState('');
@@ -121,6 +123,18 @@ export default function DevisPage() {
     setDevisList((data as ServiceRequest[]) ?? []);
   }, [garageId]);
 
+  const fetchClientRequests = useCallback(async () => {
+    if (!garageId) return;
+    const { data } = await supabase
+      .from('service_requests')
+      .select('*, client:clients(*), vehicle:vehicles(*)')
+      .eq('garage_id', garageId)
+      .eq('type', 'demande_devis')
+      .eq('status', 'en_attente')
+      .order('created_at', { ascending: false });
+    setClientRequests((data as ServiceRequest[]) ?? []);
+  }, [garageId]);
+
   useEffect(() => {
     async function fetchData() {
       if (!garageId) return;
@@ -135,10 +149,11 @@ export default function DevisPage() {
       setGarage(garageRes.data as Garage ?? null);
       setCannedTasks(tasksRes.data as CannedTask[] ?? []);
       await fetchDevis();
+      await fetchClientRequests();
       setLoading(false);
     }
     fetchData();
-  }, [garageId, fetchDevis]);
+  }, [garageId, fetchDevis, fetchClientRequests]);
 
   useEffect(() => {
     if (clientId) {
@@ -242,6 +257,24 @@ export default function DevisPage() {
     setDescription('');
     setValidUntil(localDateStrPlusDays(30));
     setItems([emptyItem()]);
+    setPrefillRequestId(null);
+  }
+
+  function openCreateFromRequest(req: ServiceRequest) {
+    setPrefillRequestId(req.id);
+    setClientId(req.client_id ?? '');
+    setDescription(req.description ?? '');
+    if (req.vehicle_id) {
+      setVehicleId(req.vehicle_id);
+      if (req.client_id) {
+        supabase.from('vehicles').select('*').eq('client_id', req.client_id).then(({ data }) => {
+          setVehicles(data as Vehicle[] ?? []);
+          setVehicleId(req.vehicle_id ?? '');
+        });
+      }
+    }
+    setItems([emptyItem()]);
+    setCreateOpen(true);
   }
 
   async function handleCreate() {
@@ -250,46 +283,76 @@ export default function DevisPage() {
 
     setSubmitting(true);
     try {
-      const { data: devisNumber } = await supabase.rpc('generate_devis_number', {
-        p_garage_id: garageId,
-      });
-
       const status = isPrivileged ? 'devis_recu' : 'en_attente_validation';
 
-      const { data: devis, error } = await supabase.from('service_requests').insert({
-        type: 'demande_devis',
-        garage_id: garageId,
-        client_id: clientId,
-        vehicle_id: vehicleId || null,
-        description,
-        status,
-        devis_number: devisNumber,
-        created_by: profile?.id ?? null,
-        quoted_price: Math.round(total * 100) / 100,
-        expiry_date: validUntil,
-      }).select().single();
+      if (prefillRequestId) {
+        const { error: updError } = await supabase.from('service_requests').update({
+          client_id: clientId,
+          vehicle_id: vehicleId || null,
+          description,
+          status,
+          quoted_price: Math.round(total * 100) / 100,
+          expiry_date: validUntil,
+        }).eq('id', prefillRequestId);
+        if (updError) throw updError;
 
-      if (error) throw error;
+        const { error: delItemsError } = await supabase.from('devis_items').delete().eq('devis_id', prefillRequestId);
+        if (delItemsError) throw delItemsError;
 
-      const itemPayload = items.map((item) => ({
-        devis_id: devis.id,
-        garage_id: garageId,
-        description: item.description,
-        quantity: parseFloat(item.quantity) || 1,
-        unit_price: parseFloat(item.unit_price) || 0,
-        line_total: Math.round((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0) * 100) / 100,
-        item_type: item.item_type,
-      }));
+        const itemPayload = items.map((item) => ({
+          devis_id: prefillRequestId,
+          garage_id: garageId,
+          description: item.description,
+          quantity: parseFloat(item.quantity) || 1,
+          unit_price: parseFloat(item.unit_price) || 0,
+          line_total: Math.round((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0) * 100) / 100,
+          item_type: item.item_type,
+        }));
 
-      const { error: itemsError } = await supabase.from('devis_items').insert(itemPayload);
-      if (itemsError) throw itemsError;
+        const { error: itemsError } = await supabase.from('devis_items').insert(itemPayload);
+        if (itemsError) throw itemsError;
+      } else {
+        const { data: devisNumber } = await supabase.rpc('generate_devis_number', {
+          p_garage_id: garageId,
+        });
+
+        const { data: devis, error } = await supabase.from('service_requests').insert({
+          type: 'demande_devis',
+          garage_id: garageId,
+          client_id: clientId,
+          vehicle_id: vehicleId || null,
+          description,
+          status,
+          devis_number: devisNumber,
+          created_by: profile?.id ?? null,
+          quoted_price: Math.round(total * 100) / 100,
+          expiry_date: validUntil,
+        }).select().single();
+
+        if (error) throw error;
+
+        const itemPayload = items.map((item) => ({
+          devis_id: devis.id,
+          garage_id: garageId,
+          description: item.description,
+          quantity: parseFloat(item.quantity) || 1,
+          unit_price: parseFloat(item.unit_price) || 0,
+          line_total: Math.round((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0) * 100) / 100,
+          item_type: item.item_type,
+        }));
+
+        const { error: itemsError } = await supabase.from('devis_items').insert(itemPayload);
+        if (itemsError) throw itemsError;
+      }
 
       toast.success(t('devisPage.created'), { description: t('devisPage.createdDesc') });
       setCreateOpen(false);
       resetForm();
+      setPrefillRequestId(null);
       clearDraft();
       setDraftCleared(true);
       await fetchDevis();
+      await fetchClientRequests();
     } catch (err: any) {
       toast.error(t('devisPage.error'), { description: err.message });
     } finally {
@@ -419,6 +482,9 @@ export default function DevisPage() {
     return false;
   });
 
+  const pendingCount = devisList.filter((d) => d.status === 'en_attente_validation' || d.status === 'devis_recu').length;
+  const processedCount = devisList.filter((d) => d.status === 'devis_accepte' || d.status === 'devis_refuse').length;
+
   const statusBadge = (status: string) => {
     if (status === 'en_attente_validation') return <Badge variant="secondary">{t('devisPage.tabPending')}</Badge>;
     if (status === 'devis_recu') return <Badge variant="default">{t('devisPage.tabSent')}</Badge>;
@@ -435,7 +501,13 @@ export default function DevisPage() {
     const dSubtotal = laborSub + partSub;
     const dCalc = calculateVAT(dSubtotal);
 
-    const renderRow = (item: DevisItem) => (
+    const renderRow = (item: DevisItem) => {
+      const isLabor = (item.item_type ?? 'piece') === 'main_oeuvre';
+      const qtyLabel = isLabor
+        ? `(${formatQty(Number(item.quantity))} h)`
+        : `(x${formatQty(Number(item.quantity))})`;
+      const summary = `${item.description} ${qtyLabel} — ${formatCHF(item.line_total)}`;
+      return (
       <div key={item.id} className="px-2 py-1.5 text-sm">
         <div className="grid grid-cols-12 gap-2">
           <div className="col-span-6">{item.description}</div>
@@ -443,22 +515,11 @@ export default function DevisPage() {
           <div className="col-span-2 text-right hidden sm:block">{formatCHF(item.unit_price)}</div>
           <div className="col-span-2 text-right font-medium hidden sm:block">{formatCHF(item.line_total)}</div>
         </div>
-        <div className="sm:hidden mt-1 space-y-0.5">
-          <div className="flex justify-between">
-            <span className="text-xs text-muted-foreground">{t('clientInv.qty')}</span>
-            <span>{formatQty(Number(item.quantity))}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-xs text-muted-foreground">{t('clientInv.unitPrice')}</span>
-            <span>{formatCHF(item.unit_price)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-xs text-muted-foreground">{t('clientInv.totalCol')}</span>
-            <span className="font-medium">{formatCHF(item.line_total)}</span>
-          </div>
+        <div className="sm:hidden px-0 py-0.5 text-sm">
+          {summary}
         </div>
       </div>
-    );
+    );};
 
     return (
       <div className="border-t pt-2 space-y-2">
@@ -625,11 +686,26 @@ export default function DevisPage() {
   return (
     <div className="p-6 space-y-6">
       <PageHeader title={t('devisPage.title')} description={t('devisPage.desc')}>
-        <Button onClick={() => setCreateOpen(true)}>
+        <Button onClick={() => { resetForm(); setCreateOpen(true); }}>
           <FilePlus2 className="h-4 w-4 mr-2" />
           {t('devisPage.new')}
         </Button>
       </PageHeader>
+
+      <div className="grid grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-2xl font-bold">{pendingCount}</p>
+            <p className="text-sm text-muted-foreground">{t('devisPage.devisPending')}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-2xl font-bold">{processedCount}</p>
+            <p className="text-sm text-muted-foreground">{t('devisPage.devisProcessed')}</p>
+          </CardContent>
+        </Card>
+      </div>
 
       {hasDraft && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm">
@@ -643,11 +719,53 @@ export default function DevisPage() {
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabKey)}>
         <TabsList>
+          <TabsTrigger value="requests">{t('devisPage.tabRequests')}</TabsTrigger>
           <TabsTrigger value="pending">{t('devisPage.tabPending')}</TabsTrigger>
           <TabsTrigger value="sent">{t('devisPage.tabSent')}</TabsTrigger>
           <TabsTrigger value="accepted">{t('devisPage.tabAccepted')}</TabsTrigger>
           <TabsTrigger value="refused">{t('devisPage.tabRefused')}</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="requests" className="space-y-3">
+          {clientRequests.length === 0 ? (
+            <Card className="border-border/60">
+              <CardContent className="py-8 text-center text-muted-foreground">
+                {t('devisPage.emptyRequests')}
+              </CardContent>
+            </Card>
+          ) : (
+            clientRequests.map((req) => {
+              const clientName = req.client
+                ? req.client.company_name
+                  ? `${req.client.company_name} (${req.client.first_name} ${req.client.last_name})`
+                  : `${req.client.first_name} ${req.client.last_name}`
+                  : '';
+              const vehicleInfo = req.vehicle
+                ? `${req.vehicle.brand} ${req.vehicle.model} — ${req.vehicle.license_plate}`
+                : '';
+              return (
+                <Card key={req.id} className="border-border/60">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">{new Date(req.created_at).toLocaleDateString('fr-CH')}</p>
+                        <p className="font-semibold">{clientName}</p>
+                        {vehicleInfo && <p className="text-xs text-muted-foreground">{vehicleInfo}</p>}
+                        {req.description && (
+                          <p className="text-sm text-muted-foreground mt-1">{req.description}</p>
+                        )}
+                      </div>
+                      <Button size="sm" onClick={() => openCreateFromRequest(req)}>
+                        <FilePlus2 className="h-3.5 w-3.5 mr-1" />
+                        {t('devisPage.createQuoteBtn')}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </TabsContent>
 
         {(['pending', 'sent', 'accepted', 'refused'] as TabKey[]).map((tab) => (
           <TabsContent key={tab} value={tab} className="space-y-3">
@@ -745,7 +863,7 @@ export default function DevisPage() {
       <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) resetForm(); }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{t('devisPage.new')}</DialogTitle>
+            <DialogTitle>{prefillRequestId ? t('devisPage.createQuoteBtn') : t('devisPage.new')}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
