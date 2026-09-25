@@ -23,16 +23,16 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'dashboard', 'mes-interventions', 'rendez-vous', 'ordres-reparation', 'planning',
     'factures', 'paiements', 'clients', 'stock', 'commandes-pieces',
     'vehicules-courtoisie', 'taches-types', 'rappels', 'rapports',
-    'mon-garage', 'equipe',
+    'mon-garage', 'equipe', 'devis',
   ],
   mecanicien: [
     'dashboard', 'mes-interventions', 'ordres-reparation', 'planning', 'stock',
     'commandes-pieces', 'clients', 'taches-types', 'rappels',
-    'vehicules-courtoisie',
+    'vehicules-courtoisie', 'devis',
   ],
   secretaire: [
     'dashboard', 'factures', 'paiements', 'rendez-vous', 'rapports', 'clients',
-    'stock', 'commandes-pieces', 'vehicules-courtoisie', 'rappels',
+    'stock', 'commandes-pieces', 'vehicules-courtoisie', 'rappels', 'devis',
   ],
   client: [],
 };
@@ -198,6 +198,10 @@ export interface ServiceRequest {
   expiry_date: string | null;
   valid_until_days: number | null;
   admin_comment: string | null;
+  devis_number: string | null;
+  created_by: string | null;
+  responded_by: string | null;
+  responded_at: string | null;
   created_at: string;
   updated_at: string;
   client?: Client;

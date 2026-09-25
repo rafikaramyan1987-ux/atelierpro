@@ -7,8 +7,12 @@ import {
   type Client,
   type Vehicle,
   type Garage,
+  type ServiceRequest,
+  type DevisItem,
   INVOICE_STATUS_LABELS,
   PAYMENT_METHOD_LABELS,
+  calculateVAT,
+  VAT_RATE,
 } from './types/database';
 
 function pdfNumber(n: number, decimals = 0): string {
@@ -344,4 +348,187 @@ export function garageToPdfInfo(garage: Garage | null): GaragePdfInfo | null {
     iban: garage.iban,
     logo_url: garage.logo_url,
   };
+}
+
+export async function generateDevisPDF(
+  devis: ServiceRequest,
+  client: Client | null,
+  vehicle: Vehicle | null,
+  items: DevisItem[],
+  garage: GaragePdfInfo | null,
+) {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  doc.setFillColor(13, 14, 20);
+  doc.rect(0, 0, pageWidth, 35, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(22);
+  doc.setFont('helvetica', 'bold');
+  doc.text(garage?.name || 'DEVIS', 14, 18);
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  let addrY = 25;
+  if (garage?.address) {
+    doc.text(garage.address, 14, addrY);
+    addrY += 5;
+  }
+  if (garage?.postal_code && garage?.city) {
+    doc.text(`${garage.postal_code} ${garage.city}`, 14, addrY);
+    addrY += 5;
+  }
+  if (garage?.phone) {
+    doc.text(`Tél: ${garage.phone}`, 14, addrY);
+    addrY += 5;
+  }
+  if (garage?.email) {
+    doc.text(garage.email, 14, addrY);
+  }
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DEVIS', pageWidth - 14, 18, { align: 'right' });
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(devis.devis_number || '', pageWidth - 14, 25, { align: 'right' });
+  doc.text(`Date: ${new Date(devis.created_at).toLocaleDateString('fr-CH')}`, pageWidth - 14, 30, { align: 'right' });
+
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Facturé à:', 14, 50);
+
+  doc.setFont('helvetica', 'normal');
+  if (client) {
+    let y = 57;
+    if (client.company_name) {
+      doc.setFont('helvetica', 'bold');
+      doc.text(client.company_name, 14, y);
+      y += 6;
+    }
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${client.first_name} ${client.last_name}`, 14, y);
+    y += 6;
+    if (client.address) {
+      doc.text(client.address, 14, y);
+      y += 6;
+    }
+    if (client.postal_code && client.city) {
+      doc.text(`${client.postal_code} ${client.city}`, 14, y);
+      y += 6;
+    }
+    if (client.phone) {
+      doc.text(`Tél: ${client.phone}`, 14, y);
+    }
+  }
+
+  if (vehicle) {
+    doc.setFont('helvetica', 'bold');
+    doc.text('Véhicule:', pageWidth - 90, 50);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${vehicle.brand} ${vehicle.model}`, pageWidth - 90, 57);
+    doc.text(`Immatriculation: ${vehicle.license_plate}`, pageWidth - 90, 63);
+    if (vehicle.vin) {
+      doc.text(`VIN: ${vehicle.vin}`, pageWidth - 90, 69);
+    }
+    if (vehicle.mileage) {
+      doc.text(`Kilométrage: ${pdfNumber(vehicle.mileage)} km`, pageWidth - 90, 75);
+    }
+  }
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  if (devis.expiry_date) {
+    doc.text(`Valable jusqu'au: ${new Date(devis.expiry_date).toLocaleDateString('fr-CH')}`, 14, 85);
+  }
+
+  autoTable(doc, {
+    startY: 95,
+    head: [['Description', 'Qté', 'Prix unitaire', 'Total']],
+    body: items.map((item) => [
+      item.description,
+      pdfNumber(item.quantity),
+      pdfAmount(item.unit_price),
+      pdfAmount(item.line_total),
+    ]),
+    theme: 'striped',
+    headStyles: {
+      fillColor: [13, 14, 20],
+      fontSize: 10,
+      fontStyle: 'bold',
+    },
+    bodyStyles: {
+      fontSize: 10,
+    },
+    columnStyles: {
+      1: { halign: 'center', cellWidth: 20 },
+      2: { halign: 'right', cellWidth: 35 },
+      3: { halign: 'right', cellWidth: 35 },
+    },
+    margin: { left: 14, right: 14 },
+  });
+
+  const afterTableY = (doc as any).lastAutoTable?.finalY ?? 110;
+  const totalsY = afterTableY + 10;
+  const totalsX = pageWidth - 80;
+
+  const subtotal = items.reduce((sum, item) => sum + Number(item.line_total), 0);
+  const { vat, total } = calculateVAT(subtotal);
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Sous-total:', totalsX, totalsY);
+  doc.text(pdfAmount(subtotal), pageWidth - 14, totalsY, { align: 'right' });
+
+  doc.text(`TVA (${pdfRate(VAT_RATE)}%):`, totalsX, totalsY + 7);
+  doc.text(pdfAmount(vat), pageWidth - 14, totalsY + 7, { align: 'right' });
+
+  doc.setFillColor(13, 14, 20);
+  doc.roundedRect(pageWidth - 96, totalsY + 10, 86, 12, 2, 2, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Total CHF:', totalsX, totalsY + 18);
+  doc.text(pdfAmount(total), pageWidth - 14, totalsY + 18, { align: 'right' });
+
+  if (devis.description) {
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text('Description:', 14, totalsY + 35);
+    const splitDesc = doc.splitTextToSize(devis.description, pageWidth - 28);
+    doc.text(splitDesc, 14, totalsY + 41);
+  }
+
+  const footerY = pageHeight - 15;
+  doc.setFontSize(8);
+  doc.setTextColor(120, 120, 120);
+  const footerParts: string[] = [];
+  if (garage?.name) footerParts.push(garage.name);
+  if (garage?.address) footerParts.push(garage.address);
+  if (garage?.postal_code && garage?.city) footerParts.push(`${garage.postal_code} ${garage.city}`);
+  if (footerParts.length > 0) {
+    doc.text(footerParts.join(' — '), 14, footerY);
+  }
+  const footerParts2: string[] = [];
+  if (garage?.email) footerParts2.push(garage.email);
+  if (garage?.phone) footerParts2.push(`Tél: ${garage.phone}`);
+  if (garage?.vat_number) footerParts2.push(garage.vat_number);
+  if (footerParts2.length > 0) {
+    doc.text(footerParts2.join(' — '), 14, footerY + 5);
+  }
+
+  const blob = doc.output('blob');
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `devis-${devis.devis_number || devis.id}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }

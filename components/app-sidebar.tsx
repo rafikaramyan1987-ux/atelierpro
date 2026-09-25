@@ -30,6 +30,7 @@ import {
   ListChecks,
   Bell,
   BarChart3,
+  FilePlus2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { canAccess, type UserRole } from '@/lib/types/database';
@@ -39,6 +40,7 @@ const navItems = [
   { labelKey: 'sidebar.garage.myInterventions', href: '/mes-interventions', icon: Hammer, roles: ['admin', 'mecanicien'] },
   { labelKey: 'sidebar.garage.appointments', href: '/rendez-vous', icon: CalendarClock, roles: ['admin', 'secretaire'] },
   { labelKey: 'sidebar.garage.repairOrders', href: '/ordres-reparation', icon: ClipboardList, roles: ['admin', 'mecanicien'] },
+  { labelKey: 'sidebar.garage.devis', href: '/devis', icon: FilePlus2, roles: ['admin', 'mecanicien', 'secretaire'] as UserRole[] },
   { labelKey: 'sidebar.garage.planning', href: '/planning', icon: CalendarDays, roles: ['admin', 'mecanicien'] },
   { labelKey: 'sidebar.garage.invoices', href: '/factures', icon: FileText, roles: ['admin', 'secretaire'] },
   { labelKey: 'sidebar.garage.clients', href: '/clients', icon: Users, roles: ['admin', 'mecanicien', 'secretaire'] },
@@ -123,7 +125,7 @@ export function AppSidebar({ currentPath }: { currentPath: string }) {
                   {pendingCount}
                 </span>
               )}
-              {item.href === '/dashboard' && pendingDevisCount > 0 && profile?.role === 'admin' && (
+              {item.href === '/devis' && pendingDevisCount > 0 && (
                 <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-warning px-1.5 text-[10px] font-bold text-warning-foreground">
                   {pendingDevisCount}
                 </span>
