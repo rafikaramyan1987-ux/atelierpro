@@ -68,7 +68,7 @@ export default function ClientRendezVousPage() {
     const [vRes, aRes, gRes] = await Promise.all([
       supabase.from('vehicles').select('*').eq('client_id', profile!.client_id).order('created_at', { ascending: false }),
       supabase.from('appointments').select('*, vehicle:vehicles(*)').eq('client_id', profile!.client_id).order('created_at', { ascending: false }),
-      supabase.from('garages').select('id, name').order('name'),
+      supabase.from('garages_public').select('id, name').order('name'),
     ]);
     setVehicles(vRes.data as Vehicle[] ?? []);
     const appts = (aRes.data as any) ?? [];

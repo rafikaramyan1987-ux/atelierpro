@@ -72,7 +72,7 @@ export default function GaragesPage() {
 
   useEffect(() => {
     async function fetchGarages() {
-      const { data } = await supabase.from('garages').select('*').order('name');
+      const { data } = await supabase.from('garages_public').select('*').order('name');
       const garageList = (data as Garage[]) ?? [];
       setGarages(garageList);
 

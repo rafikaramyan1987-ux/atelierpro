@@ -56,7 +56,7 @@ export default function ClientDevisPage() {
     const [vRes, rRes, gRes] = await Promise.all([
       supabase.from('vehicles').select('*').eq('client_id', profile.client_id).order('created_at', { ascending: false }),
       supabase.from('service_requests').select('*, vehicle:vehicles(*), devis_items(*)').eq('client_id', profile.client_id).order('created_at', { ascending: false }),
-      supabase.from('garages').select('id, name').order('name'),
+      supabase.from('garages_public').select('id, name').order('name'),
     ]);
     setVehicles(vRes.data as Vehicle[] ?? []);
     setRequests(rRes.data as any ?? []);

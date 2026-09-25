@@ -69,7 +69,7 @@ export default function ClientInvoicesPage() {
     const { data: client } = await supabase.from('clients').select('*').eq('id', invoice.client_id).maybeSingle();
     let garage: Garage | null = null;
     if (invoice.garage_id) {
-      const { data: g } = await supabase.from('garages').select('*').eq('id', invoice.garage_id).maybeSingle();
+      const { data: g } = await supabase.from('garages_public').select('*').eq('id', invoice.garage_id).maybeSingle();
       garage = g as Garage | null;
     }
     await generateInvoicePDF(invoice, client as any, invoice.vehicle ?? null, items ?? [], garageToPdfInfo(garage));
