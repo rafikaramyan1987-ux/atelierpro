@@ -87,8 +87,12 @@ export default function FacturesPage() {
       const { data: g } = await supabase.from('garages').select('*').eq('id', invoice.garage_id).maybeSingle();
       garage = g as Garage | null;
     }
-    await generateInvoicePDF(invoice, invoice.client, vehicle, items ?? [], garageToPdfInfo(garage));
-    toast.success(t('toast.pdfDownloaded'));
+    try {
+      await generateInvoicePDF(invoice, invoice.client, vehicle, items ?? [], garageToPdfInfo(garage));
+      toast.success(t('toast.pdfDownloaded'));
+    } catch (err: any) {
+      toast.error(t('toast.error'), { description: err?.message ?? String(err) });
+    }
   }
 
   async function handleIssueInvoice(invoice: Invoice) {

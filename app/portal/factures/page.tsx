@@ -83,8 +83,12 @@ export default function ClientInvoicesPage() {
         };
       }
     }
-    await generateInvoicePDF(invoice, client as any, invoice.vehicle ?? null, items ?? [], garageInfo);
-    toast.success(t('toast.pdfDownloaded'));
+    try {
+      await generateInvoicePDF(invoice, client as any, invoice.vehicle ?? null, items ?? [], garageInfo);
+      toast.success(t('toast.pdfDownloaded'));
+    } catch (err: any) {
+      toast.error(t('toast.error'), { description: err?.message ?? String(err) });
+    }
   }
 
   async function openDetail(invoice: Invoice & { vehicle?: Vehicle }) {

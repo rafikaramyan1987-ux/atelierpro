@@ -265,10 +265,21 @@ export async function generateInvoicePDF(
       }
 
       const el = new DOMParser().parseFromString(svgString, 'image/svg+xml').documentElement;
-      await svg2pdf(el, doc, { x: 0, y: qrY, width: 210, height: 105 });
-      qrDrawn = true;
-    } catch {
-      // If QR bill generation fails, skip it
+      const hidden = document.createElement('div');
+      hidden.style.position = 'absolute';
+      hidden.style.left = '-10000px';
+      hidden.style.top = '0';
+      hidden.style.width = '210mm';
+      hidden.appendChild(el);
+      document.body.appendChild(hidden);
+      try {
+        await svg2pdf(el, doc, { x: 0, y: qrY, width: 210, height: 105 });
+        qrDrawn = true;
+      } finally {
+        document.body.removeChild(hidden);
+      }
+    } catch (err) {
+      console.error('QR bill generation failed, saving PDF without payment part:', err);
     }
   }
 
@@ -291,7 +302,15 @@ export async function generateInvoicePDF(
   }
   doc.text('Merci de votre confiance!', pageWidth / 2, footerY + 10, { align: 'center' });
 
-  doc.save(`facture-${invoice.invoice_number}.pdf`);
+  const blob = doc.output('blob');
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `facture-${invoice.invoice_number}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 export function garageToPdfInfo(garage: Garage | null): GaragePdfInfo | null {
