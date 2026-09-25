@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { PageHeader } from '@/components/page-header';
@@ -65,10 +65,12 @@ export default function NewInvoicePage() {
   const [draftCleared, setDraftCleared] = useState(false);
 
   const formData = { clientId, vehicleId, issueDate, dueDate, notes, internalNotes, payerType, secondaryPayerType, secondaryPayerAmount, items };
+  const initialFormData = useRef({ clientId: '', vehicleId: '', issueDate: localDateStr(), dueDate: localDateStrPlusDays(30), notes: '', internalNotes: '', payerType: 'client' as PayerType, secondaryPayerType: 'none' as PayerType | 'none', secondaryPayerAmount: '', items: [{ id: 'init', part_id: null, description: '', quantity: '1', unit_price: '', item_type: 'piece' as ItemType }] });
   const { hasDraft, draftData, restoreDraft, ignoreDraft, clearDraft } = useDraftAutoSave(
     'invoice',
     profile?.id,
     formData,
+    initialFormData.current,
     (d) => {
       setClientId(d.clientId ?? '');
       setVehicleId(d.vehicleId ?? '');

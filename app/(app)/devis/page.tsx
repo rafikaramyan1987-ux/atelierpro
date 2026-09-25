@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent } from '@/components/ui/card';
@@ -95,10 +95,12 @@ export default function DevisPage() {
   const hourlyRate = garage?.hourly_rate ?? 120;
 
   const formData = { clientId, vehicleId, description, validUntil, items };
+  const initialFormData = useRef({ clientId: '', vehicleId: '', description: '', validUntil: localDateStrPlusDays(30), items: [{ id: 'init', part_id: null, description: '', quantity: '1', unit_price: '', item_type: 'piece' as ItemType }] });
   const { hasDraft, draftData, restoreDraft, ignoreDraft, clearDraft } = useDraftAutoSave(
     'devis',
     profile?.id,
     formData,
+    initialFormData.current,
     (d) => {
       setClientId(d.clientId ?? '');
       setVehicleId(d.vehicleId ?? '');

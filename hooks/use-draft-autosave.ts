@@ -6,10 +6,37 @@ export interface DraftData {
   [key: string]: unknown;
 }
 
+function hasMeaningfulChange<T extends DraftData>(current: T, initial: T): boolean {
+  for (const key of Object.keys(current)) {
+    const cv = current[key];
+    const iv = initial[key];
+
+    if (Array.isArray(cv) && Array.isArray(iv)) {
+      const changed = cv.some((item) => {
+        if (!item || typeof item !== 'object') return false;
+        const desc = (item as any).description;
+        const price = parseFloat((item as any).unit_price);
+        return (typeof desc === 'string' && desc.trim() !== '') || (price > 0);
+      });
+      if (changed) return true;
+      continue;
+    }
+
+    if (typeof cv === 'string' && typeof iv === 'string') {
+      if (cv.trim() !== '' && cv.trim() !== iv.trim()) return true;
+      continue;
+    }
+
+    if (cv !== iv && cv !== '' && cv != null) return true;
+  }
+  return false;
+}
+
 export function useDraftAutoSave<T extends DraftData>(
   formName: string,
   userId: string | undefined,
   data: T,
+  initialData: T,
   restoreFn: (data: T) => void,
   clearOnDep: unknown,
 ) {
@@ -18,14 +45,7 @@ export function useDraftAutoSave<T extends DraftData>(
   const [draftData, setDraftData] = useState<T | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipSaveRef = useRef(false);
-
-  const draftHasContent = useCallback((d: T): boolean => {
-    return Object.values(d).some((v) => {
-      if (Array.isArray(v)) return v.length > 0 && v.some((i) => i && typeof i === 'object' && 'description' in i && (i as any).description);
-      if (typeof v === 'string') return v.trim() !== '';
-      return v != null;
-    });
-  }, []);
+  const initialRef = useRef(initialData);
 
   useEffect(() => {
     if (!userId) return;
@@ -33,7 +53,7 @@ export function useDraftAutoSave<T extends DraftData>(
       const stored = localStorage.getItem(storageKey);
       if (stored) {
         const parsed = JSON.parse(stored) as T;
-        if (draftHasContent(parsed)) {
+        if (hasMeaningfulChange(parsed, initialRef.current)) {
           setDraftData(parsed);
           setHasDraft(true);
           skipSaveRef.current = true;
@@ -44,7 +64,7 @@ export function useDraftAutoSave<T extends DraftData>(
     } catch {
       // ignore parse errors
     }
-  }, [storageKey, userId, draftHasContent]);
+  }, [storageKey, userId]);
 
   useEffect(() => {
     if (!userId) return;
@@ -55,13 +75,10 @@ export function useDraftAutoSave<T extends DraftData>(
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       try {
-        const hasContent = Object.values(data).some((v) => {
-          if (Array.isArray(v)) return v.length > 0 && v.some((i) => i && typeof i === 'object' && 'description' in i && (i as any).description);
-          if (typeof v === 'string') return v.trim() !== '';
-          return v != null;
-        });
-        if (hasContent) {
+        if (hasMeaningfulChange(data, initialRef.current)) {
           localStorage.setItem(storageKey, JSON.stringify(data));
+        } else {
+          localStorage.removeItem(storageKey);
         }
       } catch {
         // ignore storage errors
