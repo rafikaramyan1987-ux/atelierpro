@@ -255,7 +255,7 @@ export async function generateInvoicePDF(
     }
   }
 
-  const footerY = qrDrawn ? 186 : pageHeight - 15;
+  const footerY = qrDrawn ? 176 : pageHeight - 15;
   doc.setFontSize(8);
   doc.setTextColor(120, 120, 120);
   const footerParts: string[] = [];
