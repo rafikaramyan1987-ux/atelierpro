@@ -70,7 +70,9 @@ function pdfNumber(n: number, decimals = 0): string {
 function pdfQty(n: number): string {
   const rounded = Math.round(n * 100) / 100;
   const str = rounded.toFixed(2).replace(/\.?0+$/, '');
-  return pdfNumber(Number(str), 0);
+  const dotIdx = str.indexOf('.');
+  const decimals = dotIdx === -1 ? 0 : str.length - dotIdx - 1;
+  return pdfNumber(rounded, decimals);
 }
 
 function pdfAmount(n: number): string {
