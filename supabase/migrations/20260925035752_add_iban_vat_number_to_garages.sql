@@ -1,0 +1,2 @@
+ALTER TABLE garages ADD COLUMN IF NOT EXISTS iban text;
+ALTER TABLE garages ADD COLUMN IF NOT EXISTS vat_number text;

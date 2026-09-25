@@ -34,8 +34,9 @@ import {
   type PaymentMethod,
 } from '@/lib/types/database';
 import { FileText, Loader2, Download, CreditCard, QrCode, Smartphone, CheckCircle2, ArrowLeft } from 'lucide-react';
-import { generateInvoicePDF } from '@/lib/pdf';
+import { generateInvoicePDF, garageToPdfInfo } from '@/lib/pdf';
 import { toast } from 'sonner';
+import type { Garage } from '@/lib/types/database';
 
 export default function ClientInvoicesPage() {
   const { profile } = useAuth();
@@ -66,7 +67,12 @@ export default function ClientInvoicesPage() {
   async function handleDownload(invoice: Invoice & { vehicle?: Vehicle }) {
     const { data: items } = await supabase.from('invoice_items').select('*').eq('invoice_id', invoice.id);
     const { data: client } = await supabase.from('clients').select('*').eq('id', invoice.client_id).maybeSingle();
-    generateInvoicePDF(invoice, client as any, invoice.vehicle ?? null, items ?? []);
+    let garage: Garage | null = null;
+    if (invoice.garage_id) {
+      const { data: g } = await supabase.from('garages').select('*').eq('id', invoice.garage_id).maybeSingle();
+      garage = g as Garage | null;
+    }
+    generateInvoicePDF(invoice, client as any, invoice.vehicle ?? null, items ?? [], garageToPdfInfo(garage));
     toast.success(t('toast.pdfDownloaded'));
   }
 

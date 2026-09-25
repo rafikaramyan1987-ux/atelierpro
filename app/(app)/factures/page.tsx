@@ -25,10 +25,11 @@ import {
 } from '@/components/ui/select';
 import { formatCHF, INVOICE_STATUS_LABELS, PAYMENT_METHOD_LABELS, type Invoice } from '@/lib/types/database';
 import { Plus, Search, FileText, Loader2, Eye, Download, FileSpreadsheet, Send } from 'lucide-react';
-import { generateInvoicePDF } from '@/lib/pdf';
+import { generateInvoicePDF, garageToPdfInfo } from '@/lib/pdf';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/auth-context';
+import type { Garage } from '@/lib/types/database';
 
 export default function FacturesPage() {
   const router = useRouter();
@@ -78,7 +79,12 @@ export default function FacturesPage() {
       vehicle = v;
     }
 
-    generateInvoicePDF(invoice, invoice.client, vehicle, items ?? []);
+    let garage: Garage | null = null;
+    if (invoice.garage_id) {
+      const { data: g } = await supabase.from('garages').select('*').eq('id', invoice.garage_id).maybeSingle();
+      garage = g as Garage | null;
+    }
+    generateInvoicePDF(invoice, invoice.client, vehicle, items ?? [], garageToPdfInfo(garage));
     toast.success(t('toast.pdfDownloaded'));
   }
 

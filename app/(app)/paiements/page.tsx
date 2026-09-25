@@ -9,9 +9,10 @@ import { Button } from '@/components/ui/button';
 import { formatCHF, PAYMENT_METHOD_LABELS, type Invoice, type TwintPayment } from '@/lib/types/database';
 import { CreditCard, QrCode, Smartphone, Wallet, ArrowLeft, Download, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { generateInvoicePDF } from '@/lib/pdf';
+import { generateInvoicePDF, garageToPdfInfo } from '@/lib/pdf';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
+import type { Garage } from '@/lib/types/database';
 
 export default function PaiementsPage() {
   const router = useRouter();

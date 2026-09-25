@@ -28,9 +28,10 @@ import {
   type InvoiceStatus,
 } from '@/lib/types/database';
 import { ArrowLeft, Download, Loader2, CreditCard, CheckCircle2, Clock, AlertTriangle, Car, User, QrCode, Smartphone, Wallet, FileText, Users } from 'lucide-react';
-import { generateInvoicePDF } from '@/lib/pdf';
+import { generateInvoicePDF, garageToPdfInfo } from '@/lib/pdf';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
+import type { Garage } from '@/lib/types/database';
 
 export default function InvoiceDetailPage() {
   const params = useParams();
@@ -111,7 +112,12 @@ export default function InvoiceDetailPage() {
 
   async function handleDownload() {
     if (!invoice) return;
-    generateInvoicePDF(invoice, client, vehicle, items);
+    let garage: Garage | null = null;
+    if (invoice.garage_id) {
+      const { data: g } = await supabase.from('garages').select('*').eq('id', invoice.garage_id).maybeSingle();
+      garage = g as Garage | null;
+    }
+    generateInvoicePDF(invoice, client, vehicle, items, garageToPdfInfo(garage));
     toast.success('PDF téléchargé');
   }
 

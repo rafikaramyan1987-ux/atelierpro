@@ -235,6 +235,8 @@ export interface Garage {
   is_published: boolean;
   subscription_status: 'active' | 'suspended' | 'trial';
   subscription_updated_at: string | null;
+  iban: string | null;
+  vat_number: string | null;
   created_at: string;
 }
 

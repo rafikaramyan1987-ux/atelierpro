@@ -45,6 +45,9 @@ export default function MonGaragePage() {
   const [services, setServices] = useState<string[]>([]);
   const [gardiennageEnabled, setGardiennageEnabled] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
+  const [iban, setIban] = useState('');
+  const [vatNumber, setVatNumber] = useState('');
+  const [ibanError, setIbanError] = useState('');
 
   useEffect(() => {
     async function fetchGarage() {
@@ -70,6 +73,8 @@ export default function MonGaragePage() {
         setServices(data.services_offered || []);
         setGardiennageEnabled((data as any).gardiennage_enabled ?? false);
         setIsPublished((data as any).is_published ?? false);
+        setIban((data as any).iban ?? '');
+        setVatNumber((data as any).vat_number ?? '');
         if (!data.address || !data.city) {
           setJustCreated(true);
         }
@@ -85,8 +90,26 @@ export default function MonGaragePage() {
     );
   }
 
+  function normalizeIban(value: string): string {
+    return value.replace(/\s/g, '').toUpperCase();
+  }
+
+  function validateIban(value: string): boolean {
+    const cleaned = normalizeIban(value);
+    if (!cleaned) return true;
+    if (!/^(CH|LI)/.test(cleaned)) return false;
+    if (cleaned.length !== 21) return false;
+    return true;
+  }
+
   async function handleSave() {
     if (!garage) return;
+    const normalizedIban = normalizeIban(iban);
+    if (normalizedIban && !validateIban(normalizedIban)) {
+      setIbanError(t('garageProfile.ibanError'));
+      return;
+    }
+    setIbanError('');
     setSaving(true);
     const { error } = await supabase
       .from('garages')
@@ -102,6 +125,8 @@ export default function MonGaragePage() {
         services_offered: services,
         gardiennage_enabled: gardiennageEnabled,
         is_published: isPublished,
+        iban: normalizedIban || null,
+        vat_number: vatNumber || null,
       })
       .eq('id', garage.id);
 
@@ -109,7 +134,7 @@ export default function MonGaragePage() {
       toast.error(t('garageProfile.toast.error'), { description: error.message });
     } else {
       toast.success(t('garageProfile.toast.saved'));
-      setGarage({ ...garage, name, description, address, city, postal_code: postalCode, phone, email, logo_url: logoUrl, services_offered: services, gardiennage_enabled: gardiennageEnabled, is_published: isPublished } as Garage);
+      setGarage({ ...garage, name, description, address, city, postal_code: postalCode, phone, email, logo_url: logoUrl, services_offered: services, gardiennage_enabled: gardiennageEnabled, is_published: isPublished, iban: normalizeIban(iban) || null, vat_number: vatNumber || null } as Garage);
       if (justCreated) {
         setJustCreated(false);
         router.push('/dashboard');
@@ -221,6 +246,23 @@ export default function MonGaragePage() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t('garageProfile.logoUrl')}</label>
                   <Input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder={t('garageProfile.logoPlaceholder')} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">{t('garageProfile.iban')}</label>
+                  <Input
+                    value={iban}
+                    onChange={(e) => {
+                      setIban(e.target.value);
+                      if (ibanError) setIbanError('');
+                    }}
+                    placeholder="CH93 0076 2011 6238 5295 7"
+                    className={ibanError ? 'border-destructive' : ''}
+                  />
+                  {ibanError && <p className="text-xs text-destructive">{ibanError}</p>}
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">{t('garageProfile.vatNumber')}</label>
+                  <Input value={vatNumber} onChange={(e) => setVatNumber(e.target.value)} placeholder="CHE-123.456.789 TVA" />
                 </div>
               </div>
 
@@ -396,6 +438,12 @@ export default function MonGaragePage() {
             <CheckCircle2 className="h-4 w-4 text-success shrink-0 mt-0.5" />
             <p className="text-muted-foreground">{t('garageProfile.savedDesc')}</p>
           </div>
+          {!iban && (
+            <div className="flex items-start gap-2 rounded-lg bg-warning/5 border border-warning/20 p-3 text-sm">
+              <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+              <p className="text-muted-foreground">{t('garageProfile.ibanHint')}</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
