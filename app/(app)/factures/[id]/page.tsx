@@ -32,6 +32,7 @@ import { generateInvoicePDF, garageToPdfInfo } from '@/lib/pdf';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 import type { Garage } from '@/lib/types/database';
+import { localDateStr } from '@/lib/utils';
 
 export default function InvoiceDetailPage() {
   const params = useParams();
@@ -87,7 +88,7 @@ export default function InvoiceDetailPage() {
     setUpdating(true);
     const payload: any = { status };
     if (status === 'payee') {
-      payload.paid_date = new Date().toISOString().split('T')[0];
+      payload.paid_date = localDateStr();
     }
     const { error } = await supabase.from('invoices').update(payload).eq('id', invoice.id);
     if (error) {

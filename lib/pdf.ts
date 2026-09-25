@@ -194,6 +194,23 @@ export async function generateInvoicePDF(
   doc.text('Total CHF:', totalsX, totalsY + 18);
   doc.text(formatCHF(invoice.total), pageWidth - 14, totalsY + 18, { align: 'right' });
 
+  const secondaryAmount = invoice.secondary_payer_amount != null ? Number(invoice.secondary_payer_amount) : 0;
+  const clientOwes = Number(invoice.total) - secondaryAmount;
+  let insuranceLabelY = totalsY + 28;
+
+  if (secondaryAmount > 0) {
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text('Part assurance:', totalsX, insuranceLabelY);
+    doc.text(formatCHF(secondaryAmount), pageWidth - 14, insuranceLabelY, { align: 'right' });
+    insuranceLabelY += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text('À payer par le client:', totalsX, insuranceLabelY);
+    doc.text(formatCHF(clientOwes), pageWidth - 14, insuranceLabelY, { align: 'right' });
+  }
+
   if (invoice.notes) {
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'normal');
@@ -217,7 +234,7 @@ export async function generateInvoicePDF(
         zip: garage!.postal_code || '',
       },
       currency: 'CHF',
-      amount: Number(invoice.total),
+      amount: clientOwes,
     };
 
     if (isQRIBAN(garage!.iban!)) {

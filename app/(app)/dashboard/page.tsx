@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useI18n } from '@/lib/i18n/context';
+import { localDateStr, localDateStrPlusDays } from '@/lib/utils';
 import {
   AreaChart,
   Area,
@@ -154,7 +155,7 @@ export default function DashboardPage() {
   }
 
   async function fetchMecanicienDashboard() {
-    const today = new Date().toISOString().split('T')[0];
+    const today = localDateStr();
     const [repairOrders, planning, parts] = await Promise.all([
       supabase.from('repair_orders').select('*, client:clients(first_name, last_name), vehicle:vehicles(brand, model, license_plate)').eq('status', 'en_cours').order('created_at', { ascending: false }),
       supabase.from('appointments').select('*, client:clients(first_name, last_name), vehicle:vehicles(brand, model, license_plate)').eq('scheduled_date', today).order('scheduled_time', { ascending: true }),
@@ -177,10 +178,8 @@ export default function DashboardPage() {
   }
 
   async function fetchSecretaireDashboard() {
-    const today = new Date().toISOString().split('T')[0];
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    const today = localDateStr();
+    const tomorrowStr = localDateStrPlusDays(1);
 
     const [invoicesToIssue, todayAppts, unpaidInvs, clientsRes] = await Promise.all([
       supabase.from('invoices').select('*, client:clients(first_name, last_name)').eq('status', 'en_attente_validation').order('created_at', { ascending: false }),

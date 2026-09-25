@@ -30,6 +30,7 @@ import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/auth-context';
 import type { Garage } from '@/lib/types/database';
+import { localDateStr } from '@/lib/utils';
 
 export default function FacturesPage() {
   const router = useRouter();
@@ -101,7 +102,7 @@ export default function FacturesPage() {
   async function handleConfirmPayment(invoice: Invoice) {
     const { error } = await supabase.from('invoices').update({
       status: 'payee',
-      paid_date: new Date().toISOString().split('T')[0],
+      paid_date: localDateStr(),
     }).eq('id', invoice.id);
     if (error) {
       toast.error(t('toast.error'), { description: error.message });
@@ -176,7 +177,7 @@ export default function FacturesPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const dateStr = new Date().toISOString().split('T')[0];
+      const dateStr = localDateStr();
       a.download = `factures_${dateStr}.csv`;
       a.click();
       URL.revokeObjectURL(url);

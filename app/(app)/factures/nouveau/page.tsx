@@ -22,6 +22,7 @@ import { Plus, Trash2, Loader2, ArrowLeft, Save, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/auth-context';
+import { localDateStr, localDateStrPlusDays } from '@/lib/utils';
 
 interface FormItem {
   id: string;
@@ -43,8 +44,8 @@ export default function NewInvoicePage() {
 
   const [clientId, setClientId] = useState('');
   const [vehicleId, setVehicleId] = useState('');
-  const [issueDate, setIssueDate] = useState(new Date().toISOString().split('T')[0]);
-  const [dueDate, setDueDate] = useState(new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]);
+  const [issueDate, setIssueDate] = useState(localDateStr());
+  const [dueDate, setDueDate] = useState(localDateStrPlusDays(30));
   const [notes, setNotes] = useState('');
   const [payerType, setPayerType] = useState<PayerType>('client');
   const [secondaryPayerType, setSecondaryPayerType] = useState<PayerType | 'none'>('none');
@@ -124,7 +125,9 @@ export default function NewInvoicePage() {
     const isPrivileged = profile?.role === 'admin' || profile?.role === 'secretaire';
     const actualStatus = status === 'envoyee' && !isPrivileged ? 'en_attente_validation' : status;
 
-    const { data: invoiceNumber } = await supabase.rpc('generate_invoice_number');
+    const { data: invoiceNumber } = await supabase.rpc('generate_invoice_number', {
+      p_garage_id: profile?.garage_id ?? null,
+    });
 
     const { data: invoice, error: invError } = await supabase.from('invoices').insert({
       invoice_number: invoiceNumber,

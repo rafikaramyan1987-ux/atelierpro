@@ -28,7 +28,7 @@ import {
 } from '@/lib/types/database';
 import { CalendarClock, Plus, Loader2, CheckCircle2, XCircle, Clock, Star, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+import { cn, localDateStr } from '@/lib/utils';
 import { sendEmail, newAppointmentEmail } from '@/lib/email';
 
 export default function ClientRendezVousPage() {
@@ -395,7 +395,7 @@ export default function ClientRendezVousPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="appt-date">{t('appts.date')} *</Label>
-                <Input id="appt-date" type="date" required min={new Date().toISOString().split('T')[0]} value={form.requested_date} onChange={(e) => setForm({ ...form, requested_date: e.target.value })} />
+                <Input id="appt-date" type="date" required min={localDateStr()} value={form.requested_date} onChange={(e) => setForm({ ...form, requested_date: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="appt-time">{t('clientAppt.desiredSlot')}</Label>

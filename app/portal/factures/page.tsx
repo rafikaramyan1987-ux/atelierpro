@@ -34,9 +34,8 @@ import {
   type PaymentMethod,
 } from '@/lib/types/database';
 import { FileText, Loader2, Download, CreditCard, QrCode, Smartphone, CheckCircle2, ArrowLeft } from 'lucide-react';
-import { generateInvoicePDF, garageToPdfInfo } from '@/lib/pdf';
+import { generateInvoicePDF, garageToPdfInfo, type GaragePdfInfo } from '@/lib/pdf';
 import { toast } from 'sonner';
-import type { Garage } from '@/lib/types/database';
 
 export default function ClientInvoicesPage() {
   const { profile } = useAuth();
@@ -67,12 +66,24 @@ export default function ClientInvoicesPage() {
   async function handleDownload(invoice: Invoice & { vehicle?: Vehicle }) {
     const { data: items } = await supabase.from('invoice_items').select('*').eq('invoice_id', invoice.id);
     const { data: client } = await supabase.from('clients').select('*').eq('id', invoice.client_id).maybeSingle();
-    let garage: Garage | null = null;
+    let garageInfo: GaragePdfInfo | null = null;
     if (invoice.garage_id) {
-      const { data: g } = await supabase.from('garages_public').select('*').eq('id', invoice.garage_id).maybeSingle();
-      garage = g as Garage | null;
+      const { data: billing } = await supabase.rpc('invoice_billing_info', { p_invoice_id: invoice.id }).maybeSingle() as { data: any };
+      if (billing) {
+        garageInfo = {
+          name: billing.name,
+          address: billing.address || '',
+          postal_code: billing.postal_code || '',
+          city: billing.city || '',
+          phone: billing.phone || '',
+          email: billing.email,
+          vat_number: billing.vat_number,
+          iban: billing.iban,
+          logo_url: null,
+        };
+      }
     }
-    await generateInvoicePDF(invoice, client as any, invoice.vehicle ?? null, items ?? [], garageToPdfInfo(garage));
+    await generateInvoicePDF(invoice, client as any, invoice.vehicle ?? null, items ?? [], garageInfo);
     toast.success(t('toast.pdfDownloaded'));
   }
 

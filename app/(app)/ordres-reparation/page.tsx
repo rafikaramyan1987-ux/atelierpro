@@ -59,6 +59,7 @@ import {
 } from '@/lib/types/database';
 import { SignaturePad } from '@/components/signature-pad';
 import { OrPhotosSection } from '@/components/or-photos';
+import { localDateStr, localDateStrPlusDays } from '@/lib/utils';
 
 export default function RepairOrdersPage() {
   const { profile } = useAuth();
@@ -90,8 +91,8 @@ export default function RepairOrdersPage() {
   const [loanerVehicles, setLoanerVehicles] = useState<LoanerVehicle[]>([]);
   const [loanerAssignments, setLoanerAssignments] = useState<LoanerAssignment[]>([]);
   const [selectedLoanerId, setSelectedLoanerId] = useState('');
-  const [loanerStartDate, setLoanerStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [loanerEndDate, setLoanerEndDate] = useState(new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0]);
+  const [loanerStartDate, setLoanerStartDate] = useState(localDateStr());
+  const [loanerEndDate, setLoanerEndDate] = useState(localDateStrPlusDays(3));
   const [cannedTasks, setCannedTasks] = useState<CannedTask[]>([]);
   const [extraItems, setExtraItems] = useState<{ description: string; quantity: number; unit_price: number }[]>([]);
   const [devisItems, setDevisItems] = useState<DevisItem[]>([]);
@@ -279,13 +280,27 @@ export default function RepairOrdersPage() {
 
   async function handleConvertToInvoice() {
     if (!convertDialog) return;
+
+    if (convertDialog.invoice_id || convertDialog.status === 'facture') {
+      toast.error(t('or.alreadyInvoiced'));
+      return;
+    }
+
     setSubmitting(true);
 
     const items = convertDialog.repair_order_items ?? [];
     const subtotal = items.reduce((sum, it) => sum + it.line_total, 0);
     const { vat, total } = calculateVAT(subtotal);
 
-    const { data: invoiceNumber } = await supabase.rpc('generate_invoice_number');
+    const { data: invoiceNumber } = await supabase.rpc('generate_invoice_number', {
+      p_garage_id: profile?.garage_id ?? null,
+    });
+
+    if (!invoiceNumber) {
+      toast.error(t('toast.error'), { description: 'Failed to generate invoice number' });
+      setSubmitting(false);
+      return;
+    }
 
     const { data: invoice, error: invError } = await supabase.from('invoices').insert({
       invoice_number: invoiceNumber,
@@ -297,8 +312,8 @@ export default function RepairOrdersPage() {
       vat_rate: VAT_RATE,
       vat_amount: vat,
       total,
-      issue_date: new Date().toISOString().split('T')[0],
-      due_date: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+      issue_date: localDateStr(),
+      due_date: localDateStrPlusDays(30),
       payer_type: payerType,
     }).select().single();
 
@@ -317,13 +332,27 @@ export default function RepairOrdersPage() {
         unit_price: it.unit_price,
         line_total: it.line_total,
       }));
-      await supabase.from('invoice_items').insert(itemPayload);
+      const { error: itemsError } = await supabase.from('invoice_items').insert(itemPayload);
+      if (itemsError) {
+        await supabase.from('invoices').delete().eq('id', invoice.id);
+        toast.error(t('toast.error'), { description: itemsError.message });
+        setSubmitting(false);
+        return;
+      }
     }
 
-    await supabase.from('repair_orders').update({
+    const { error: orError } = await supabase.from('repair_orders').update({
       status: 'facture',
       invoice_id: invoice.id,
     }).eq('id', convertDialog.id);
+
+    if (orError) {
+      await supabase.from('invoice_items').delete().eq('invoice_id', invoice.id);
+      await supabase.from('invoices').delete().eq('id', invoice.id);
+      toast.error(t('toast.error'), { description: orError.message });
+      setSubmitting(false);
+      return;
+    }
 
     toast.success(t('or.convertedToInvoice'), { description: t('or.convertedToInvoiceDesc') });
     setConvertDialog(null);
@@ -452,7 +481,7 @@ export default function RepairOrdersPage() {
                 {t('or.endWork')}
               </Button>
             )}
-            {order.status === 'termine' && (
+            {order.status === 'termine' && !order.invoice_id && (profile?.role === 'admin' || profile?.role === 'secretaire') && (
               <Button size="sm" onClick={() => { setPayerType('client'); setConvertDialog(order); }}>
                 <FileCheck className="h-3.5 w-3.5 mr-1" />
                 {t('or.convertToInvoice')}
