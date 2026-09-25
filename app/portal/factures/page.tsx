@@ -174,6 +174,8 @@ export default function ClientInvoicesPage() {
               <p className="text-sm">{t('invoices.none')}</p>
             </div>
           ) : (
+            <>
+            <div className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -221,6 +223,41 @@ export default function ClientInvoicesPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
+            <div className="md:hidden divide-y">
+              {invoices.map((inv) => (
+                <div key={inv.id} className="p-4 cursor-pointer hover:bg-secondary/30" onClick={() => openDetail(inv)}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-xs font-medium">{inv.invoice_number}</span>
+                    <Badge
+                      variant={inv.status === 'payee' ? 'default' : inv.status === 'en_retard' ? 'destructive' : 'secondary'}
+                      className="text-xs"
+                    >
+                      {inv.status === 'payee' ? t('invoices.paid') : inv.status === 'envoyee' ? t('invoices.unpaid') : inv.status === 'en_retard' ? t('invoices.late') : inv.status === 'paiement_declare' ? t('invoices.paymentDeclared') : t('invoices.draft')}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">{new Date(inv.issue_date).toLocaleDateString('fr-CH')}</p>
+                  {inv.vehicle && <p className="text-sm text-muted-foreground">{inv.vehicle.brand} {inv.vehicle.model}</p>}
+                  <div className="flex items-center justify-between gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
+                    <span className="font-bold">{formatCHF(Number(inv.total))}</span>
+                    <div className="flex gap-1">
+                      {inv.status !== 'payee' && inv.status !== 'brouillon' && inv.status !== 'paiement_declare' && (
+                        <Button size="sm" onClick={() => openPayDialog(inv)}>
+                          {t('invoices.pay')}
+                        </Button>
+                      )}
+                      {inv.status === 'paiement_declare' && (
+                        <Badge variant="outline" className="text-xs text-warning">{t('invoices.paymentDeclared')}</Badge>
+                      )}
+                      <Button variant="ghost" size="icon" onClick={() => handleDownload(inv)}>
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -236,7 +273,7 @@ export default function ClientInvoicesPage() {
           </DialogHeader>
           {detailInvoice && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <p className="text-sm text-muted-foreground">{t('invoices.issueDate')}</p>
                   <p className="text-sm font-medium">{new Date(detailInvoice.issue_date).toLocaleDateString('fr-CH')}</p>
@@ -330,18 +367,18 @@ export default function ClientInvoicesPage() {
                 </div>
               )}
 
-              <div className="flex justify-between gap-2 pt-2">
-                <Button variant="outline" onClick={() => setDetailInvoice(null)}>
+              <div className="flex flex-col sm:flex-row justify-between gap-2 pt-2">
+                <Button variant="outline" className="w-full sm:w-auto" onClick={() => setDetailInvoice(null)}>
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   {t('common.close')}
                 </Button>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   {detailInvoice.status !== 'payee' && detailInvoice.status !== 'brouillon' && detailInvoice.status !== 'paiement_declare' && (
-                    <Button onClick={() => { setPayInvoice(detailInvoice); setPayDialogOpen(true); setDetailInvoice(null); }}>
+                    <Button className="w-full sm:w-auto" onClick={() => { setPayInvoice(detailInvoice); setPayDialogOpen(true); setDetailInvoice(null); }}>
                       {t('invoices.payNow')}
                     </Button>
                   )}
-                  <Button variant="outline" onClick={() => handleDownload(detailInvoice)}>
+                  <Button variant="outline" className="w-full sm:w-auto" onClick={() => handleDownload(detailInvoice)}>
                     <Download className="h-4 w-4 mr-2" />
                     PDF
                   </Button>

@@ -250,17 +250,17 @@ export default function ClientRendezVousPage() {
             return (
               <Card key={appt.id} className="border-border/60 hover:shadow-sm transition-shadow">
                 <CardContent className="p-5">
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col gap-3">
                     <div className="flex items-start gap-3">
                       <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 shrink-0">
                         <StatusIcon className={`h-5 w-5 ${statusConfig[appt.status]?.color ?? 'text-muted-foreground'}`} />
                       </div>
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <p className="font-medium">{appt.service_type}</p>
                         <p className="text-sm text-muted-foreground">
                           {appt.vehicle ? `${appt.vehicle.brand} ${appt.vehicle.model} — ${appt.vehicle.license_plate}` : t('garages.noVehicle')}
                         </p>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mt-1 text-xs text-muted-foreground">
                           <span>{t('clientAppt.requested')} {new Date(appt.requested_date).toLocaleDateString('fr-CH')} {t('clientAppt.at')} {appt.requested_time}</span>
                           {appt.scheduled_date && (
                             <span className="text-success font-medium">
@@ -298,7 +298,7 @@ export default function ClientRendezVousPage() {
                         )}
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-2">
+                    <div className="flex items-center justify-between gap-2">
                       <Badge
                         variant={appt.status === 'confirme' ? 'default' : appt.status === 'refuse' || appt.status === 'annule' ? 'destructive' : 'secondary'}
                         className="text-xs"
@@ -310,12 +310,13 @@ export default function ClientRendezVousPage() {
                           {t('common.cancel')}
                         </Button>
                       )}
+                    </div>
                       {appt.status === 'termine' && (
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col sm:flex-row gap-2">
                           <Button
                             variant="outline"
                             size="sm"
-                            className="text-xs"
+                            className="text-xs w-full sm:w-auto"
                             onClick={() => openReviewDialog(appt)}
                           >
                             {hasReview ? (
@@ -334,7 +335,7 @@ export default function ClientRendezVousPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="text-xs hover:text-destructive"
+                              className="text-xs hover:text-destructive w-full sm:w-auto"
                               onClick={() => deleteReview(appt.id)}
                             >
                               {t('review.delete')}
@@ -342,7 +343,6 @@ export default function ClientRendezVousPage() {
                           )}
                         </div>
                       )}
-                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -392,7 +392,7 @@ export default function ClientRendezVousPage() {
                 <p className="text-xs text-muted-foreground">{t('clientAppt.addVehicleHint')}</p>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="appt-date">{t('appts.date')} *</Label>
                 <Input id="appt-date" type="date" required min={localDateStr()} value={form.requested_date} onChange={(e) => setForm({ ...form, requested_date: e.target.value })} />

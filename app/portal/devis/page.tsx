@@ -31,6 +31,7 @@ import { FileSearch, Plus, Loader2, CheckCircle2, XCircle, Clock, FileText, Pen,
 import { toast } from 'sonner';
 import { sendEmail, newDevisEmail } from '@/lib/email';
 import { SignaturePad } from '@/components/signature-pad';
+import { formatQty } from '@/lib/utils';
 
 export default function ClientDevisPage() {
   const { profile } = useAuth();
@@ -188,16 +189,16 @@ export default function ClientDevisPage() {
             return (
               <Card key={req.id} className="border-border/60 hover:shadow-sm transition-shadow">
                 <CardContent className="p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3 flex-1">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start gap-3">
                       <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${sc.bg} shrink-0`}>
                         <StatusIcon className={`h-5 w-5 ${sc.color}`} />
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         {req.vehicle && (
                           <p className="text-sm text-muted-foreground">{req.vehicle.brand} {req.vehicle.model} — {req.vehicle.license_plate}</p>
                         )}
-                        <p className="text-sm text-muted-foreground mt-1 max-w-md">{req.description}</p>
+                        <p className="text-sm text-muted-foreground mt-1">{req.description}</p>
                         <p className="text-xs text-muted-foreground mt-1">{new Date(req.created_at).toLocaleDateString('fr-CH')}</p>
 
                         {req.status === 'devis_recu' && req.expiry_date && (
@@ -209,13 +210,17 @@ export default function ClientDevisPage() {
                         {req.status === 'devis_recu' && items.length > 0 && (
                           <div className="mt-3 rounded-lg border border-border/60 bg-secondary/30 p-3">
                             <p className="text-xs font-medium text-foreground mb-2">{t('devis.quoteFromGarage')}</p>
-                            <div className="space-y-1">
-                              {items.map((it) => (
-                                <div key={it.id} className="flex justify-between text-xs">
-                                  <span>{it.description} (x{it.quantity})</span>
-                                  <span className="font-medium">{formatCHF(Number(it.line_total))}</span>
-                                </div>
-                              ))}
+                            <div className="space-y-2">
+                              {items.map((it) => {
+                                const isLabor = (it.item_type ?? 'piece') === 'main_oeuvre';
+                                const qtyLabel = isLabor ? `${formatQty(Number(it.quantity))} h` : `x${formatQty(Number(it.quantity))}`;
+                                return (
+                                  <div key={it.id} className="text-xs">
+                                    <p>{it.description} <span className="text-muted-foreground">({qtyLabel})</span></p>
+                                    <p className="text-right font-medium mt-0.5">{formatCHF(Number(it.line_total))}</p>
+                                  </div>
+                                );
+                              })}
                             </div>
                             <Separator className="my-2" />
                             <div className="flex justify-between text-xs text-muted-foreground">
@@ -245,37 +250,37 @@ export default function ClientDevisPage() {
                         )}
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-2 shrink-0">
+                    <div className="flex items-center justify-between gap-2">
                       <Badge
                         variant={req.status === 'devis_accepte' ? 'default' : req.status === 'devis_refuse' ? 'destructive' : req.status === 'devis_recu' ? 'default' : 'secondary'}
                         className="text-xs"
                       >
                         {req.status === 'devis_accepte' ? t('devis.status.accepted') : req.status === 'devis_refuse' ? t('devis.status.refused') : req.status === 'devis_recu' ? t('devis.status.received') : t('devis.status.pending')}
                       </Badge>
-                      {req.status === 'devis_recu' && (!req.expiry_date || new Date(req.expiry_date) >= new Date()) && (
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline" className="hover:text-destructive" onClick={() => handleRefuseDevis(req.id)}>
-                            <XCircle className="h-3.5 w-3.5 mr-1" /> {t('devis.refuse')}
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => setDetailDevis(req)}>
-                            <Pen className="h-3.5 w-3.5 mr-1" /> {t('sig.title')}
-                          </Button>
-                          <Button size="sm" onClick={() => handleAcceptDevis(req.id)}>
-                            <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> {t('devis.accept')}
-                          </Button>
-                        </div>
+                      {req.status === 'devis_accepte' && req.signature_data && (
+                        <Badge variant="outline" className="text-xs text-success border-success/30">
+                          <CheckCircle2 className="h-3 w-3 mr-1" /> {t('sig.signed')}
+                        </Badge>
                       )}
                       {req.status === 'devis_recu' && req.expiry_date && new Date(req.expiry_date) < new Date() && (
                         <Badge variant="destructive" className="text-xs">
                           <AlertTriangle className="h-3 w-3 mr-1" />{t('devis.expired')}
                         </Badge>
                       )}
-                      {req.status === 'devis_accepte' && req.signature_data && (
-                        <Badge variant="outline" className="text-xs text-success border-success/30">
-                          <CheckCircle2 className="h-3 w-3 mr-1" /> {t('sig.signed')}
-                        </Badge>
-                      )}
                     </div>
+                      {req.status === 'devis_recu' && (!req.expiry_date || new Date(req.expiry_date) >= new Date()) && (
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <Button size="sm" variant="outline" className="hover:text-destructive w-full sm:w-auto" onClick={() => handleRefuseDevis(req.id)}>
+                            <XCircle className="h-3.5 w-3.5 mr-1" /> {t('devis.refuse')}
+                          </Button>
+                          <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => setDetailDevis(req)}>
+                            <Pen className="h-3.5 w-3.5 mr-1" /> {t('sig.title')}
+                          </Button>
+                          <Button size="sm" className="w-full sm:w-auto" onClick={() => handleAcceptDevis(req.id)}>
+                            <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> {t('devis.accept')}
+                          </Button>
+                        </div>
+                      )}
                   </div>
                 </CardContent>
               </Card>
@@ -295,12 +300,16 @@ export default function ClientDevisPage() {
               <p className="text-sm text-muted-foreground">{t('sig.confirmDesc')}</p>
               {detailDevis.devis_items && detailDevis.devis_items.length > 0 && (
                 <div className="rounded-lg border border-border/60 p-3 space-y-1">
-                  {detailDevis.devis_items.map((it) => (
-                    <div key={it.id} className="flex justify-between text-sm">
-                      <span>{it.description} ×{it.quantity}</span>
-                      <span className="font-medium">{formatCHF(Number(it.line_total))}</span>
-                    </div>
-                  ))}
+                  {detailDevis.devis_items.map((it) => {
+                    const isLabor = (it.item_type ?? 'piece') === 'main_oeuvre';
+                    const qtyLabel = isLabor ? `${formatQty(Number(it.quantity))} h` : `x${formatQty(Number(it.quantity))}`;
+                    return (
+                      <div key={it.id} className="text-sm">
+                        <p>{it.description} <span className="text-muted-foreground">({qtyLabel})</span></p>
+                        <p className="text-right font-medium mt-0.5">{formatCHF(Number(it.line_total))}</p>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
               <SignaturePad
