@@ -46,7 +46,8 @@ import { Plus, Trash2, Loader2, FileDown, Check, X, FilePlus2 } from 'lucide-rea
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/auth-context';
-import { localDateStrPlusDays } from '@/lib/utils';
+import { localDateStrPlusDays, formatQty } from '@/lib/utils';
+import { useDraftAutoSave } from '@/hooks/use-draft-autosave';
 import { generateDevisPDF, garageToPdfInfo } from '@/lib/pdf';
 
 interface FormItem {
@@ -87,10 +88,26 @@ export default function DevisPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [editingDevis, setEditingDevis] = useState<ServiceRequest | null>(null);
   const [editItems, setEditItems] = useState<FormItem[]>([]);
+  const [draftCleared, setDraftCleared] = useState(false);
 
   const garageId = profile?.garage_id ?? null;
   const isPrivileged = profile?.role === 'admin' || profile?.role === 'secretaire';
   const hourlyRate = garage?.hourly_rate ?? 120;
+
+  const formData = { clientId, vehicleId, description, validUntil, items };
+  const { hasDraft, draftData, restoreDraft, ignoreDraft, clearDraft } = useDraftAutoSave(
+    'devis',
+    profile?.id,
+    formData,
+    (d) => {
+      setClientId(d.clientId ?? '');
+      setVehicleId(d.vehicleId ?? '');
+      setDescription(d.description ?? '');
+      setValidUntil(d.validUntil ?? localDateStrPlusDays(30));
+      setItems(d.items?.length ? d.items : [emptyItem()]);
+    },
+    draftCleared,
+  );
 
   const fetchDevis = useCallback(async () => {
     if (!garageId) return;
@@ -268,6 +285,8 @@ export default function DevisPage() {
       toast.success(t('devisPage.created'), { description: t('devisPage.createdDesc') });
       setCreateOpen(false);
       resetForm();
+      clearDraft();
+      setDraftCleared(true);
       await fetchDevis();
     } catch (err: any) {
       toast.error(t('devisPage.error'), { description: err.message });
@@ -418,14 +437,14 @@ export default function DevisPage() {
       <div key={item.id} className="px-2 py-1.5 text-sm">
         <div className="grid grid-cols-12 gap-2">
           <div className="col-span-6">{item.description}</div>
-          <div className="col-span-2 text-center hidden sm:block">{item.quantity}</div>
+          <div className="col-span-2 text-center hidden sm:block">{formatQty(Number(item.quantity))}</div>
           <div className="col-span-2 text-right hidden sm:block">{formatCHF(item.unit_price)}</div>
           <div className="col-span-2 text-right font-medium hidden sm:block">{formatCHF(item.line_total)}</div>
         </div>
         <div className="sm:hidden mt-1 space-y-0.5">
           <div className="flex justify-between">
             <span className="text-xs text-muted-foreground">{t('clientInv.qty')}</span>
-            <span>{item.quantity}</span>
+            <span>{formatQty(Number(item.quantity))}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-xs text-muted-foreground">{t('clientInv.unitPrice')}</span>
@@ -446,8 +465,8 @@ export default function DevisPage() {
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-2 mb-1">{t('items.labor')}</p>
             <div className="hidden sm:grid grid-cols-12 gap-2 px-2 py-1.5 text-xs font-medium text-muted-foreground">
               <div className="col-span-6">{t('clientInv.description')}</div>
-              <div className="col-span-2 text-center">{t('clientInv.qty')}</div>
-              <div className="col-span-2 text-right">{t('clientInv.unitPrice')}</div>
+              <div className="col-span-2 text-center">{t('items.hours')}</div>
+              <div className="col-span-2 text-right">{t('items.hourlyRate')}</div>
               <div className="col-span-2 text-right">{t('clientInv.totalCol')}</div>
             </div>
             {laborItems.map(renderRow)}
@@ -603,6 +622,15 @@ export default function DevisPage() {
 
   return (
     <div className="p-6 space-y-6">
+      {hasDraft && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm">
+          <span className="font-medium">{t('draft.found')}</span>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={restoreDraft}>{t('draft.restore')}</Button>
+            <Button size="sm" variant="ghost" onClick={ignoreDraft}>{t('draft.ignore')}</Button>
+          </div>
+        </div>
+      )}
       <PageHeader title={t('devisPage.title')} description={t('devisPage.desc')}>
         <Button onClick={() => setCreateOpen(true)}>
           <FilePlus2 className="h-4 w-4 mr-2" />

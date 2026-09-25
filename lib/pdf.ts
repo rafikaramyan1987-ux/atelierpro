@@ -18,12 +18,12 @@ import {
 
 type PdfItem = { description: string; quantity: number; unit_price: number; line_total: number; item_type?: string };
 
-function drawGroupedTables(doc: any, items: PdfItem[], startY: number, laborLabel: string, partsLabel: string, qtyLabel: string, priceLabel: string, totalLabel: string, subtotalLabel: string) {
+function drawGroupedTables(doc: any, items: PdfItem[], startY: number, laborLabel: string, partsLabel: string, laborHeaders: string[], partsHeaders: string[], totalLabel: string, subtotalLabel: string) {
   let y = startY;
   const laborItems = items.filter((i) => i.item_type === 'main_oeuvre');
   const partsItems = items.filter((i) => (i.item_type ?? 'piece') === 'piece');
 
-  for (const group of [{ label: laborLabel, rows: laborItems }, { label: partsLabel, rows: partsItems }]) {
+  for (const group of [{ label: laborLabel, rows: laborItems, headers: laborHeaders }, { label: partsLabel, rows: partsItems, headers: partsHeaders }]) {
     if (group.rows.length === 0) continue;
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
@@ -32,10 +32,10 @@ function drawGroupedTables(doc: any, items: PdfItem[], startY: number, laborLabe
     y += 4;
     autoTable(doc, {
       startY: y,
-      head: [[totalLabel === 'Total' ? 'Description' : 'Description', qtyLabel, priceLabel, totalLabel]],
+      head: [group.headers],
       body: group.rows.map((item) => [
         item.description,
-        pdfNumber(item.quantity),
+        pdfQty(item.quantity),
         pdfAmount(item.unit_price),
         pdfAmount(item.line_total),
       ]),
@@ -65,6 +65,12 @@ function pdfNumber(n: number, decimals = 0): string {
   const [intPart, decPart] = fixed.split('.');
   const withSep = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, "'");
   return (n < 0 ? '-' : '') + (decPart ? `${withSep}.${decPart}` : withSep);
+}
+
+function pdfQty(n: number): string {
+  const rounded = Math.round(n * 100) / 100;
+  const str = rounded.toFixed(2).replace(/\.?0+$/, '');
+  return pdfNumber(Number(str), 0);
 }
 
 function pdfAmount(n: number): string {
@@ -212,7 +218,7 @@ export async function generateInvoicePDF(
     doc.text(`Paiement: ${PAYMENT_METHOD_LABELS[invoice.payment_method]}`, 14, 97);
   }
 
-  const afterTableY = drawGroupedTables(doc, items as PdfItem[], 105, 'Main d\'œuvre', 'Pièces', 'Qté', 'Prix unitaire', 'Total', 'Sous-total');
+  const afterTableY = drawGroupedTables(doc, items as PdfItem[], 105, 'Main d\'œuvre', 'Pièces', ['Description', 'Heures', 'Taux horaire', 'Total'], ['Description', 'Qté', 'Prix unitaire', 'Total'], 'Total', 'Sous-total');
   const totalsY = afterTableY + 10;
   const totalsX = pageWidth - 80;
 
@@ -466,7 +472,7 @@ export async function generateDevisPDF(
     doc.text(`Valable jusqu'au: ${new Date(devis.expiry_date).toLocaleDateString('fr-CH')}`, 14, 85);
   }
 
-  const afterTableY = drawGroupedTables(doc, items as PdfItem[], 95, 'Main d\'œuvre', 'Pièces', 'Qté', 'Prix unitaire', 'Total', 'Sous-total');
+  const afterTableY = drawGroupedTables(doc, items as PdfItem[], 95, 'Main d\'œuvre', 'Pièces', ['Description', 'Heures', 'Taux horaire', 'Total'], ['Description', 'Qté', 'Prix unitaire', 'Total'], 'Total', 'Sous-total');
   const totalsY = afterTableY + 10;
   const totalsX = pageWidth - 80;
 

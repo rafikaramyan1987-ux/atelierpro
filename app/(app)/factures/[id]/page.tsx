@@ -32,7 +32,7 @@ import { generateInvoicePDF, garageToPdfInfo } from '@/lib/pdf';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 import type { Garage } from '@/lib/types/database';
-import { localDateStr } from '@/lib/utils';
+import { localDateStr, formatQty } from '@/lib/utils';
 
 export default function InvoiceDetailPage() {
   const params = useParams();
@@ -312,38 +312,55 @@ export default function InvoiceDetailPage() {
           <CardTitle className="text-base">{t('invoices.details')}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="border-b hidden sm:block">
-            <div className="grid grid-cols-12 gap-2 px-6 py-3 text-xs font-medium text-muted-foreground">
-              <div className="col-span-6">{t('admin.appts.itemDesc')}</div>
-              <div className="col-span-2 text-center">{t('admin.appts.qty')}</div>
-              <div className="col-span-2 text-right">{t('admin.appts.unitPrice')}</div>
-              <div className="col-span-2 text-right">{t('invNew.lineTotal')}</div>
-            </div>
-          </div>
-          {items.map((item) => (
-            <div key={item.id} className="px-6 py-3 text-sm border-b last:border-0 hover:bg-secondary/30">
-              <div className="grid grid-cols-12 gap-2">
-                <div className="col-span-6">{item.description}</div>
-                <div className="col-span-2 text-center hidden sm:block">{item.quantity}</div>
-                <div className="col-span-2 text-right hidden sm:block">{formatCHF(item.unit_price)}</div>
-                <div className="col-span-2 text-right font-medium hidden sm:block">{formatCHF(item.line_total)}</div>
-              </div>
-              <div className="sm:hidden mt-2 space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-xs text-muted-foreground">{t('admin.appts.qty')}</span>
-                  <span>{item.quantity}</span>
+          {(() => {
+            const laborItems = items.filter((i) => i.item_type === 'main_oeuvre');
+            const partItems = items.filter((i) => (i.item_type ?? 'piece') === 'piece');
+            const renderRow = (item: InvoiceItem) => (
+              <div key={item.id} className="px-6 py-3 text-sm border-b last:border-0 hover:bg-secondary/30">
+                <div className="grid grid-cols-12 gap-2">
+                  <div className="col-span-6">{item.description}</div>
+                  <div className="col-span-2 text-center hidden sm:block">{formatQty(Number(item.quantity))}</div>
+                  <div className="col-span-2 text-right hidden sm:block">{formatCHF(item.unit_price)}</div>
+                  <div className="col-span-2 text-right font-medium hidden sm:block">{formatCHF(item.line_total)}</div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-xs text-muted-foreground">{t('admin.appts.unitPrice')}</span>
-                  <span>{formatCHF(item.unit_price)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-xs text-muted-foreground">{t('invNew.lineTotal')}</span>
-                  <span className="font-medium">{formatCHF(item.line_total)}</span>
+                <div className="sm:hidden mt-2 space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-xs text-muted-foreground">{t('admin.appts.qty')}</span>
+                    <span>{formatQty(Number(item.quantity))}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-muted-foreground">{t('admin.appts.unitPrice')}</span>
+                    <span>{formatCHF(item.unit_price)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-muted-foreground">{t('invNew.lineTotal')}</span>
+                    <span className="font-medium">{formatCHF(item.line_total)}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+            const renderBlock = (label: string, qtyLabel: string, priceLabel: string, rows: InvoiceItem[]) =>
+              rows.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-6 pt-3 pb-1">{label}</p>
+                  <div className="border-b hidden sm:block">
+                    <div className="grid grid-cols-12 gap-2 px-6 py-3 text-xs font-medium text-muted-foreground">
+                      <div className="col-span-6">{t('admin.appts.itemDesc')}</div>
+                      <div className="col-span-2 text-center">{qtyLabel}</div>
+                      <div className="col-span-2 text-right">{priceLabel}</div>
+                      <div className="col-span-2 text-right">{t('invNew.lineTotal')}</div>
+                    </div>
+                  </div>
+                  {rows.map(renderRow)}
+                </div>
+              );
+            return (
+              <>
+                {renderBlock(t('items.labor'), t('items.hours'), t('items.hourlyRate'), laborItems)}
+                {renderBlock(t('items.parts'), t('admin.appts.qty'), t('admin.appts.unitPrice'), partItems)}
+              </>
+            );
+          })()}
         </CardContent>
       </Card>
 

@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/auth-context';
 import { localDateStr, localDateStrPlusDays } from '@/lib/utils';
+import { useDraftAutoSave } from '@/hooks/use-draft-autosave';
 
 interface FormItem {
   id: string;
@@ -61,6 +62,27 @@ export default function NewInvoicePage() {
   const [items, setItems] = useState<FormItem[]>([
     emptyItem(),
   ]);
+  const [draftCleared, setDraftCleared] = useState(false);
+
+  const formData = { clientId, vehicleId, issueDate, dueDate, notes, internalNotes, payerType, secondaryPayerType, secondaryPayerAmount, items };
+  const { hasDraft, draftData, restoreDraft, ignoreDraft, clearDraft } = useDraftAutoSave(
+    'invoice',
+    profile?.id,
+    formData,
+    (d) => {
+      setClientId(d.clientId ?? '');
+      setVehicleId(d.vehicleId ?? '');
+      setIssueDate(d.issueDate ?? localDateStr());
+      setDueDate(d.dueDate ?? localDateStrPlusDays(30));
+      setNotes(d.notes ?? '');
+      setInternalNotes(d.internalNotes ?? '');
+      setPayerType((d.payerType as PayerType) ?? 'client');
+      setSecondaryPayerType((d.secondaryPayerType as PayerType | 'none') ?? 'none');
+      setSecondaryPayerAmount(d.secondaryPayerAmount ?? '');
+      setItems(d.items?.length ? d.items : [emptyItem()]);
+    },
+    draftCleared,
+  );
 
   useEffect(() => {
     async function fetchData() {
@@ -206,6 +228,8 @@ export default function NewInvoicePage() {
         toast.success(t('invList.invoiceSent'));
       }
       router.push('/factures');
+      clearDraft();
+      setDraftCleared(true);
     }
     setSubmitting(false);
   }
@@ -220,6 +244,15 @@ export default function NewInvoicePage() {
 
   return (
     <div className="p-6 space-y-6 max-w-5xl">
+      {hasDraft && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm">
+          <span className="font-medium">{t('draft.found')}</span>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={restoreDraft}>{t('draft.restore')}</Button>
+            <Button size="sm" variant="ghost" onClick={ignoreDraft}>{t('draft.ignore')}</Button>
+          </div>
+        </div>
+      )}
       <PageHeader title={t('admin.invoices.new')} description="">
         <Button variant="outline" onClick={() => router.push('/factures')}>
           <ArrowLeft className="h-4 w-4 mr-2" />

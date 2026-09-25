@@ -60,7 +60,7 @@ import {
 } from '@/lib/types/database';
 import { SignaturePad } from '@/components/signature-pad';
 import { OrPhotosSection } from '@/components/or-photos';
-import { localDateStr, localDateStrPlusDays } from '@/lib/utils';
+import { localDateStr, localDateStrPlusDays, formatQty } from '@/lib/utils';
 
 export default function RepairOrdersPage() {
   const { profile } = useAuth();
@@ -677,7 +677,7 @@ export default function RepairOrdersPage() {
                         <div className="space-y-1">
                           {extraItems.map((it, i) => (
                             <div key={i} className="flex items-center justify-between text-sm rounded-lg border border-border/40 px-2 py-1.5">
-                              <span>{it.description} ×{it.quantity}</span>
+                              <span>{it.description} ×{formatQty(Number(it.quantity))}</span>
                               <span className="font-medium">{formatCHF(it.quantity * it.unit_price)}</span>
                             </div>
                           ))}
@@ -784,7 +784,7 @@ export default function RepairOrdersPage() {
               <div className="rounded-lg border border-border/60 p-3 space-y-1">
                 {convertDialog.repair_order_items.map((it) => (
                   <div key={it.id} className="flex justify-between text-sm">
-                    <span>{it.description} ×{it.quantity}</span>
+                    <span>{it.description} ×{formatQty(Number(it.quantity))}</span>
                     <span className="font-medium">{formatCHF(it.line_total)}</span>
                   </div>
                 ))}
@@ -893,7 +893,7 @@ export default function RepairOrdersPage() {
                                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">{t('items.labor')}</p>
                                 {laborItems.map((it) => (
                                   <div key={it.id} className="flex justify-between text-sm py-0.5">
-                                    <span>{it.description} ×{it.quantity}</span>
+                                    <span>{it.description} ×{formatQty(Number(it.quantity))}</span>
                                     <span className="font-medium">{formatCHF(it.line_total)}</span>
                                   </div>
                                 ))}
@@ -908,7 +908,7 @@ export default function RepairOrdersPage() {
                                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">{t('items.parts')}</p>
                                 {partItems.map((it) => (
                                   <div key={it.id} className="flex justify-between text-sm py-0.5">
-                                    <span>{it.description} ×{it.quantity}</span>
+                                    <span>{it.description} ×{formatQty(Number(it.quantity))}</span>
                                     <span className="font-medium">{formatCHF(it.line_total)}</span>
                                   </div>
                                 ))}

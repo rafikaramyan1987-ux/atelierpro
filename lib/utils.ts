@@ -19,3 +19,8 @@ export function localDateStrPlusDays(days: number, base: Date = new Date()): str
   const d = new Date(base.getTime() + days * 86400000);
   return localDateStr(d);
 }
+
+export function formatQty(n: number): string {
+  const rounded = Math.round(n * 100) / 100;
+  return rounded.toFixed(2).replace(/\.?0+$/, '');
+}

@@ -36,6 +36,7 @@ import {
 import { FileText, Loader2, Download, CreditCard, QrCode, Smartphone, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { generateInvoicePDF, garageToPdfInfo, type GaragePdfInfo } from '@/lib/pdf';
 import { toast } from 'sonner';
+import { formatQty } from '@/lib/utils';
 
 export default function ClientInvoicesPage() {
   const { profile } = useAuth();
@@ -262,20 +263,44 @@ export default function ClientInvoicesPage() {
               <div>
                 <p className="text-sm font-medium mb-2">{t('invoices.details')}</p>
                 <div className="rounded-lg border border-border/60">
-                  <div className="grid grid-cols-12 gap-2 px-4 py-2 text-xs font-medium text-muted-foreground border-b">
-                    <div className="col-span-6">{t('clientInv.description')}</div>
-                    <div className="col-span-2 text-center">{t('clientInv.qty')}</div>
-                    <div className="col-span-2 text-right">{t('clientInv.unitPrice')}</div>
-                    <div className="col-span-2 text-right">{t('clientInv.totalCol')}</div>
-                  </div>
-                  {detailItems.map((it) => (
-                    <div key={it.id} className="grid grid-cols-12 gap-2 px-4 py-2 text-sm border-b last:border-0">
-                      <div className="col-span-6">{it.description}</div>
-                      <div className="col-span-2 text-center">{it.quantity}</div>
-                      <div className="col-span-2 text-right">{formatCHF(it.unit_price)}</div>
-                      <div className="col-span-2 text-right font-medium">{formatCHF(it.line_total)}</div>
-                    </div>
-                  ))}
+                  {(() => {
+                    const laborItems = detailItems.filter((it) => it.item_type === 'main_oeuvre');
+                    const partItems = detailItems.filter((it) => (it.item_type ?? 'piece') === 'piece');
+                    const renderHeader = (qtyLabel: string, priceLabel: string) => (
+                      <div className="grid grid-cols-12 gap-2 px-4 py-2 text-xs font-medium text-muted-foreground border-b">
+                        <div className="col-span-6">{t('clientInv.description')}</div>
+                        <div className="col-span-2 text-center">{qtyLabel}</div>
+                        <div className="col-span-2 text-right">{priceLabel}</div>
+                        <div className="col-span-2 text-right">{t('clientInv.totalCol')}</div>
+                      </div>
+                    );
+                    const renderRow = (it: any) => (
+                      <div key={it.id} className="grid grid-cols-12 gap-2 px-4 py-2 text-sm border-b last:border-0">
+                        <div className="col-span-6">{it.description}</div>
+                        <div className="col-span-2 text-center">{formatQty(Number(it.quantity))}</div>
+                        <div className="col-span-2 text-right">{formatCHF(it.unit_price)}</div>
+                        <div className="col-span-2 text-right font-medium">{formatCHF(it.line_total)}</div>
+                      </div>
+                    );
+                    return (
+                      <>
+                        {laborItems.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-4 pt-2 pb-1">{t('items.labor')}</p>
+                            {renderHeader(t('items.hours'), t('items.hourlyRate'))}
+                            {laborItems.map(renderRow)}
+                          </div>
+                        )}
+                        {partItems.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-4 pt-2 pb-1">{t('items.parts')}</p>
+                            {renderHeader(t('clientInv.qty'), t('clientInv.unitPrice'))}
+                            {partItems.map(renderRow)}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 
