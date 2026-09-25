@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { type Garage, SERVICE_TYPES } from '@/lib/types/database';
-import { Wrench, Save, Loader2, MapPin, Phone, Mail, Star, CheckCircle2, Store, Snowflake, Eye, AlertCircle } from 'lucide-react';
+import { Wrench, Save, Loader2, MapPin, Phone, Mail, Star, CheckCircle2, Store, Snowflake, Eye, AlertCircle, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -47,7 +47,9 @@ export default function MonGaragePage() {
   const [isPublished, setIsPublished] = useState(false);
   const [iban, setIban] = useState('');
   const [vatNumber, setVatNumber] = useState('');
+  const [hourlyRate, setHourlyRate] = useState('120');
   const [ibanError, setIbanError] = useState('');
+  const [seedingTasks, setSeedingTasks] = useState(false);
 
   useEffect(() => {
     async function fetchGarage() {
@@ -75,6 +77,7 @@ export default function MonGaragePage() {
         setIsPublished((data as any).is_published ?? false);
         setIban((data as any).iban ?? '');
         setVatNumber((data as any).vat_number ?? '');
+        setHourlyRate(String((data as any).hourly_rate ?? 120));
         if (!data.address || !data.city) {
           setJustCreated(true);
         }
@@ -127,6 +130,7 @@ export default function MonGaragePage() {
         is_published: isPublished,
         iban: normalizedIban || null,
         vat_number: vatNumber || null,
+        hourly_rate: parseFloat(hourlyRate) || 120,
       })
       .eq('id', garage.id);
 
@@ -134,7 +138,7 @@ export default function MonGaragePage() {
       toast.error(t('garageProfile.toast.error'), { description: error.message });
     } else {
       toast.success(t('garageProfile.toast.saved'));
-      setGarage({ ...garage, name, description, address, city, postal_code: postalCode, phone, email, logo_url: logoUrl, services_offered: services, gardiennage_enabled: gardiennageEnabled, is_published: isPublished, iban: normalizeIban(iban) || null, vat_number: vatNumber || null } as Garage);
+      setGarage({ ...garage, name, description, address, city, postal_code: postalCode, phone, email, logo_url: logoUrl, services_offered: services, gardiennage_enabled: gardiennageEnabled, is_published: isPublished, iban: normalizeIban(iban) || null, vat_number: vatNumber || null, hourly_rate: parseFloat(hourlyRate) || 120 } as Garage);
       if (justCreated) {
         setJustCreated(false);
         router.push('/dashboard');
@@ -268,6 +272,35 @@ export default function MonGaragePage() {
                   <label className="text-sm font-medium">{t('garageProfile.vatNumber')}</label>
                   <Input value={vatNumber} onChange={(e) => setVatNumber(e.target.value)} placeholder="CHE-123.456.789 TVA" />
                 </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">{t('garageProfile.hourlyRate')}</label>
+                  <Input type="number" min="0" step="0.5" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} placeholder="120" />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border border-border/60 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                    <Sparkles className="h-4.5 w-4.5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{t('garageProfile.seedTasks')}</p>
+                    <p className="text-xs text-muted-foreground">{t('garageProfile.seedTasksHint')}</p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" onClick={async () => {
+                  setSeedingTasks(true);
+                  const { data, error } = await supabase.rpc('seed_default_canned_tasks', { p_garage_id: garage.id });
+                  if (error) {
+                    toast.error(t('toast.error'), { description: error.message });
+                  } else {
+                    toast.success(t('garageProfile.seedTasksDone'), { description: `${data} ${t('garageProfile.tasksAdded')}` });
+                  }
+                  setSeedingTasks(false);
+                }} disabled={seedingTasks}>
+                  {seedingTasks ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                  {t('garageProfile.seedTasksBtn')}
+                </Button>
               </div>
 
               <div className="space-y-2">

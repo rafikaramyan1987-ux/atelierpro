@@ -9,11 +9,56 @@ import {
   type Garage,
   type ServiceRequest,
   type DevisItem,
+  type RepairOrderItem,
   INVOICE_STATUS_LABELS,
   PAYMENT_METHOD_LABELS,
   calculateVAT,
   VAT_RATE,
 } from './types/database';
+
+type PdfItem = { description: string; quantity: number; unit_price: number; line_total: number; item_type?: string };
+
+function drawGroupedTables(doc: any, items: PdfItem[], startY: number, laborLabel: string, partsLabel: string, qtyLabel: string, priceLabel: string, totalLabel: string, subtotalLabel: string) {
+  let y = startY;
+  const laborItems = items.filter((i) => i.item_type === 'main_oeuvre');
+  const partsItems = items.filter((i) => (i.item_type ?? 'piece') === 'piece');
+
+  for (const group of [{ label: laborLabel, rows: laborItems }, { label: partsLabel, rows: partsItems }]) {
+    if (group.rows.length === 0) continue;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(13, 14, 20);
+    doc.text(group.label, 14, y);
+    y += 4;
+    autoTable(doc, {
+      startY: y,
+      head: [[totalLabel === 'Total' ? 'Description' : 'Description', qtyLabel, priceLabel, totalLabel]],
+      body: group.rows.map((item) => [
+        item.description,
+        pdfNumber(item.quantity),
+        pdfAmount(item.unit_price),
+        pdfAmount(item.line_total),
+      ]),
+      theme: 'striped',
+      headStyles: { fillColor: [13, 14, 20], fontSize: 10, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 10 },
+      columnStyles: {
+        1: { halign: 'center', cellWidth: 20 },
+        2: { halign: 'right', cellWidth: 35 },
+        3: { halign: 'right', cellWidth: 35 },
+      },
+      margin: { left: 14, right: 14 },
+    });
+    y = (doc as any).lastAutoTable?.finalY ?? y + 20;
+    const groupSub = group.rows.reduce((s, i) => s + Number(i.line_total), 0);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text(`${subtotalLabel}: ${pdfAmount(groupSub)}`, doc.internal.pageSize.getWidth() - 14, y + 5, { align: 'right' });
+    y += 12;
+  }
+  return y;
+}
 
 function pdfNumber(n: number, decimals = 0): string {
   const fixed = Math.abs(n).toFixed(decimals);
@@ -167,33 +212,7 @@ export async function generateInvoicePDF(
     doc.text(`Paiement: ${PAYMENT_METHOD_LABELS[invoice.payment_method]}`, 14, 97);
   }
 
-  autoTable(doc, {
-    startY: 105,
-    head: [['Description', 'Qté', 'Prix unitaire', 'Total']],
-    body: items.map((item) => [
-      item.description,
-      pdfNumber(item.quantity),
-      pdfAmount(item.unit_price),
-      pdfAmount(item.line_total),
-    ]),
-    theme: 'striped',
-    headStyles: {
-      fillColor: [13, 14, 20],
-      fontSize: 10,
-      fontStyle: 'bold',
-    },
-    bodyStyles: {
-      fontSize: 10,
-    },
-    columnStyles: {
-      1: { halign: 'center', cellWidth: 20 },
-      2: { halign: 'right', cellWidth: 35 },
-      3: { halign: 'right', cellWidth: 35 },
-    },
-    margin: { left: 14, right: 14 },
-  });
-
-  const afterTableY = (doc as any).lastAutoTable?.finalY ?? 120;
+  const afterTableY = drawGroupedTables(doc, items as PdfItem[], 105, 'Main d\'œuvre', 'Pièces', 'Qté', 'Prix unitaire', 'Total', 'Sous-total');
   const totalsY = afterTableY + 10;
   const totalsX = pageWidth - 80;
 
@@ -401,7 +420,7 @@ export async function generateDevisPDF(
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('Facturé à:', 14, 50);
+  doc.text('Devis pour:', 14, 50);
 
   doc.setFont('helvetica', 'normal');
   if (client) {
@@ -447,33 +466,7 @@ export async function generateDevisPDF(
     doc.text(`Valable jusqu'au: ${new Date(devis.expiry_date).toLocaleDateString('fr-CH')}`, 14, 85);
   }
 
-  autoTable(doc, {
-    startY: 95,
-    head: [['Description', 'Qté', 'Prix unitaire', 'Total']],
-    body: items.map((item) => [
-      item.description,
-      pdfNumber(item.quantity),
-      pdfAmount(item.unit_price),
-      pdfAmount(item.line_total),
-    ]),
-    theme: 'striped',
-    headStyles: {
-      fillColor: [13, 14, 20],
-      fontSize: 10,
-      fontStyle: 'bold',
-    },
-    bodyStyles: {
-      fontSize: 10,
-    },
-    columnStyles: {
-      1: { halign: 'center', cellWidth: 20 },
-      2: { halign: 'right', cellWidth: 35 },
-      3: { halign: 'right', cellWidth: 35 },
-    },
-    margin: { left: 14, right: 14 },
-  });
-
-  const afterTableY = (doc as any).lastAutoTable?.finalY ?? 110;
+  const afterTableY = drawGroupedTables(doc, items as PdfItem[], 95, 'Main d\'œuvre', 'Pièces', 'Qté', 'Prix unitaire', 'Total', 'Sous-total');
   const totalsY = afterTableY + 10;
   const totalsX = pageWidth - 80;
 

@@ -1168,6 +1168,19 @@ export const translations: Record<Locale, TranslationDict> = {
     'admin.panel.grantAccess': 'Accorder l\'accès',
     'admin.panel.subscriptionInactive': 'Abonnement inactif',
     'admin.panel.subscriptionInactiveDesc': 'L\'abonnement de votre garage est suspendu. Contactez l\'administrateur de la plateforme pour réactiver votre compte.',
+
+    // ── Labour & item types ──
+    'items.piece': 'Pièce',
+    'items.labor': 'Main d\'œuvre',
+    'items.hours': 'Heures',
+    'items.laborSubtotal': 'Sous-total main d\'œuvre',
+    'items.partsSubtotal': 'Sous-total pièces',
+    'garageProfile.hourlyRate': 'Taux horaire (CHF/h)',
+    'garageProfile.seedTasks': 'Tâches types standard',
+    'garageProfile.seedTasksHint': 'Ajoutez 14 tâches types préconfigurées (vidange, plaquettes, diagnostic...)',
+    'garageProfile.seedTasksBtn': 'Ajouter les tâches types standard',
+    'garageProfile.seedTasksDone': 'Tâches types ajoutées',
+    'garageProfile.tasksAdded': 'tâches ajoutées',
   },
 
   de: {
@@ -2275,6 +2288,19 @@ export const translations: Record<Locale, TranslationDict> = {
     'admin.panel.grantAccess': 'Zugriff gewähren',
     'admin.panel.subscriptionInactive': 'Abonnement inaktiv',
     'admin.panel.subscriptionInactiveDesc': 'Das Abonnement Ihrer Garage ist suspendiert. Kontaktieren Sie den Plattform-Administrator, um Ihr Konto zu reaktivieren.',
+
+    // ── Labour & item types ──
+    'items.piece': 'Teil',
+    'items.labor': 'Arbeitszeit',
+    'items.hours': 'Stunden',
+    'items.laborSubtotal': 'Teilsumme Arbeitszeit',
+    'items.partsSubtotal': 'Teilsumme Teile',
+    'garageProfile.hourlyRate': 'Stundensatz (CHF/h)',
+    'garageProfile.seedTasks': 'Standardaufgaben',
+    'garageProfile.seedTasksHint': 'Fügt 14 vorkonfigurierte Standardaufgaben hinzu (Ölwechsel, Bremsbeläge, Diagnose...)',
+    'garageProfile.seedTasksBtn': 'Standardaufgaben hinzufügen',
+    'garageProfile.seedTasksDone': 'Standardaufgaben hinzugefügt',
+    'garageProfile.tasksAdded': 'Aufgaben hinzugefügt',
   },
 
   it: {
@@ -3382,6 +3408,19 @@ export const translations: Record<Locale, TranslationDict> = {
     'admin.panel.grantAccess': 'Concedi accesso',
     'admin.panel.subscriptionInactive': 'Abbonamento inattivo',
     'admin.panel.subscriptionInactiveDesc': 'L\'abbonamento della tua officina è sospeso. Contatta l\'amministratore della piattaforma per riattivare il tuo conto.',
+
+    // ── Labour & item types ──
+    'items.piece': 'Ricambio',
+    'items.labor': 'Manodopera',
+    'items.hours': 'Ore',
+    'items.laborSubtotal': 'Subtotale manodopera',
+    'items.partsSubtotal': 'Subtotale ricambi',
+    'garageProfile.hourlyRate': 'Tariffa oraria (CHF/h)',
+    'garageProfile.seedTasks': 'Attività standard',
+    'garageProfile.seedTasksHint': 'Aggiunge 14 attività preconfigurate (cambio olio, pastiglie, diagnosi...)',
+    'garageProfile.seedTasksBtn': 'Aggiungi attività standard',
+    'garageProfile.seedTasksDone': 'Attività aggiunte',
+    'garageProfile.tasksAdded': 'attività aggiunte',
   },
 
   en: {
@@ -4489,6 +4528,19 @@ export const translations: Record<Locale, TranslationDict> = {
     'admin.panel.grantAccess': 'Grant access',
     'admin.panel.subscriptionInactive': 'Subscription inactive',
     'admin.panel.subscriptionInactiveDesc': 'Your garage subscription is suspended. Contact the platform administrator to reactivate your account.',
+
+    // ── Labour & item types ──
+    'items.piece': 'Part',
+    'items.labor': 'Labour',
+    'items.hours': 'Hours',
+    'items.laborSubtotal': 'Labour subtotal',
+    'items.partsSubtotal': 'Parts subtotal',
+    'garageProfile.hourlyRate': 'Hourly rate (CHF/h)',
+    'garageProfile.seedTasks': 'Standard task templates',
+    'garageProfile.seedTasksHint': 'Adds 14 preconfigured standard tasks (oil change, brake pads, diagnostics...)',
+    'garageProfile.seedTasksBtn': 'Add standard task templates',
+    'garageProfile.seedTasksDone': 'Task templates added',
+    'garageProfile.tasksAdded': 'tasks added',
   },
 
   sq: {
@@ -5596,5 +5648,18 @@ export const translations: Record<Locale, TranslationDict> = {
     'admin.panel.grantAccess': 'Akordo qasje',
     'admin.panel.subscriptionInactive': 'Abonim i pasiv',
     'admin.panel.subscriptionInactiveDesc': 'Abonimi i garazhit tuaj është pezulluar. Kontaktoni administratorin e platformës për të riaktivizuar llogarinë tuaj.',
+
+    // ── Labour & item types ──
+    'items.piece': 'Pjesë',
+    'items.labor': 'Punë dore',
+    'items.hours': 'Orë',
+    'items.laborSubtotal': 'Nëntotali punës dore',
+    'items.partsSubtotal': 'Nëntotali pjesëve',
+    'garageProfile.hourlyRate': 'Tarifa orare (CHF/h)',
+    'garageProfile.seedTasks': 'Detyra standarde',
+    'garageProfile.seedTasksHint': 'Shton 14 detyra të paracaktuara (ndërrim vaji, pllaka, diagnostikë...)',
+    'garageProfile.seedTasksBtn': 'Shto detyrat standarde',
+    'garageProfile.seedTasksDone': 'Detyra standarde të shtuara',
+    'garageProfile.tasksAdded': 'detyra të shtuara',
   },
 };

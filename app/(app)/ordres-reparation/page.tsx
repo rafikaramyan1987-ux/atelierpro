@@ -56,6 +56,7 @@ import {
   type LoanerAssignment,
   type CannedTask,
   type DevisItem,
+  type ItemType,
 } from '@/lib/types/database';
 import { SignaturePad } from '@/components/signature-pad';
 import { OrPhotosSection } from '@/components/or-photos';
@@ -94,7 +95,7 @@ export default function RepairOrdersPage() {
   const [loanerStartDate, setLoanerStartDate] = useState(localDateStr());
   const [loanerEndDate, setLoanerEndDate] = useState(localDateStrPlusDays(3));
   const [cannedTasks, setCannedTasks] = useState<CannedTask[]>([]);
-  const [extraItems, setExtraItems] = useState<{ description: string; quantity: number; unit_price: number }[]>([]);
+  const [extraItems, setExtraItems] = useState<{ description: string; quantity: number; unit_price: number; item_type: ItemType }[]>([]);
   const [devisItems, setDevisItems] = useState<DevisItem[]>([]);
 
   const fetchData = useCallback(async () => {
@@ -179,6 +180,7 @@ export default function RepairOrdersPage() {
       quantity: item.quantity,
       unit_price: item.unit_price,
       line_total: item.line_total,
+      item_type: item.item_type ?? 'piece',
     }));
 
     if (items.length > 0) {
@@ -198,6 +200,7 @@ export default function RepairOrdersPage() {
         quantity: it.quantity,
         unit_price: it.unit_price,
         line_total: it.quantity * it.unit_price,
+        item_type: it.item_type,
       }));
       const { error: extraError } = await supabase.from('repair_order_items').insert(extraPayload);
       if (extraError) {
@@ -331,6 +334,7 @@ export default function RepairOrdersPage() {
         quantity: it.quantity,
         unit_price: it.unit_price,
         line_total: it.line_total,
+        item_type: it.item_type ?? 'piece',
       }));
       const { error: itemsError } = await supabase.from('invoice_items').insert(itemPayload);
       if (itemsError) {
@@ -638,11 +642,21 @@ export default function RepairOrdersPage() {
                       <Select onValueChange={(taskId) => {
                         const task = cannedTasks.find((t2) => t2.id === taskId);
                         if (task) {
-                          setExtraItems([...extraItems, {
-                            description: task.description || task.name,
-                            quantity: 1,
-                            unit_price: task.default_price ?? 0,
-                          }]);
+                          if (task.default_labor_hours != null) {
+                            setExtraItems([...extraItems, {
+                              description: task.name,
+                              quantity: task.default_labor_hours,
+                              unit_price: task.default_price ?? 0,
+                              item_type: 'main_oeuvre' as ItemType,
+                            }]);
+                          } else {
+                            setExtraItems([...extraItems, {
+                              description: task.name,
+                              quantity: 1,
+                              unit_price: task.default_price ?? 0,
+                              item_type: 'piece' as ItemType,
+                            }]);
+                          }
                         }
                       }}>
                         <SelectTrigger>
@@ -865,12 +879,45 @@ export default function RepairOrdersPage() {
                   <p className="text-sm font-semibold mb-2">{t('or.items')}</p>
                   {detailsDialog.repair_order_items && detailsDialog.repair_order_items.length > 0 ? (
                     <div className="rounded-lg border border-border/60 divide-y divide-border/40">
-                      {detailsDialog.repair_order_items.map((it) => (
-                        <div key={it.id} className="flex justify-between p-2.5 text-sm">
-                          <span>{it.description} ×{it.quantity}</span>
-                          <span className="font-medium">{formatCHF(it.line_total)}</span>
-                        </div>
-                      ))}
+                      {(() => {
+                        const roItems = detailsDialog.repair_order_items ?? [];
+                        const laborItems = roItems.filter((it) => it.item_type === 'main_oeuvre');
+                        const partItems = roItems.filter((it) => (it.item_type ?? 'piece') === 'piece');
+                        return (
+                          <>
+                            {laborItems.length > 0 && (
+                              <div className="p-2.5">
+                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">{t('items.labor')}</p>
+                                {laborItems.map((it) => (
+                                  <div key={it.id} className="flex justify-between text-sm py-0.5">
+                                    <span>{it.description} ×{it.quantity}</span>
+                                    <span className="font-medium">{formatCHF(it.line_total)}</span>
+                                  </div>
+                                ))}
+                                <div className="flex justify-between text-sm pt-1 border-t border-border/30">
+                                  <span className="text-muted-foreground">{t('items.laborSubtotal')}</span>
+                                  <span className="font-medium">{formatCHF(laborItems.reduce((s, it) => s + it.line_total, 0))}</span>
+                                </div>
+                              </div>
+                            )}
+                            {partItems.length > 0 && (
+                              <div className="p-2.5">
+                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">{t('items.parts')}</p>
+                                {partItems.map((it) => (
+                                  <div key={it.id} className="flex justify-between text-sm py-0.5">
+                                    <span>{it.description} ×{it.quantity}</span>
+                                    <span className="font-medium">{formatCHF(it.line_total)}</span>
+                                  </div>
+                                ))}
+                                <div className="flex justify-between text-sm pt-1 border-t border-border/30">
+                                  <span className="text-muted-foreground">{t('items.partsSubtotal')}</span>
+                                  <span className="font-medium">{formatCHF(partItems.reduce((s, it) => s + it.line_total, 0))}</span>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">{t('or.noItems')}</p>

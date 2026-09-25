@@ -134,6 +134,8 @@ export interface Invoice {
   invoice_items?: InvoiceItem[];
 }
 
+export type ItemType = 'piece' | 'main_oeuvre';
+
 export interface InvoiceItem {
   id: string;
   invoice_id: string;
@@ -143,6 +145,7 @@ export interface InvoiceItem {
   quantity: number;
   unit_price: number;
   line_total: number;
+  item_type: ItemType;
   created_at: string;
 }
 
@@ -217,6 +220,7 @@ export interface DevisItem {
   quantity: number;
   unit_price: number;
   line_total: number;
+  item_type: ItemType;
   created_at: string;
 }
 
@@ -242,6 +246,7 @@ export interface Garage {
   subscription_updated_at: string | null;
   iban: string | null;
   vat_number: string | null;
+  hourly_rate: number;
   created_at: string;
 }
 
@@ -387,6 +392,7 @@ export interface RepairOrderItem {
   quantity: number;
   unit_price: number;
   line_total: number;
+  item_type: ItemType;
   created_at: string;
 }
 
@@ -464,6 +470,7 @@ export interface CannedTask {
   description: string | null;
   estimated_duration_minutes: number | null;
   default_price: number | null;
+  default_labor_hours: number | null;
   reminder_type: ReminderType;
   interval_months: number | null;
   interval_km: number | null;

@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { formatCHF, calculateVAT, VAT_RATE, type Client, type Vehicle, type Part, type PayerType } from '@/lib/types/database';
+import { formatCHF, calculateVAT, VAT_RATE, type Client, type Vehicle, type Part, type PayerType, type CannedTask, type ItemType } from '@/lib/types/database';
 import { Plus, Trash2, Loader2, ArrowLeft, Save, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
@@ -30,6 +30,11 @@ interface FormItem {
   description: string;
   quantity: string;
   unit_price: string;
+  item_type: ItemType;
+}
+
+function emptyItem(): FormItem {
+  return { id: crypto.randomUUID(), part_id: null, description: '', quantity: '1', unit_price: '', item_type: 'piece' };
 }
 
 export default function NewInvoicePage() {
@@ -37,6 +42,8 @@ export default function NewInvoicePage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [parts, setParts] = useState<Part[]>([]);
+  const [cannedTasks, setCannedTasks] = useState<CannedTask[]>([]);
+  const [garage, setGarage] = useState<{ hourly_rate: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const { t } = useI18n();
@@ -52,17 +59,21 @@ export default function NewInvoicePage() {
   const [secondaryPayerType, setSecondaryPayerType] = useState<PayerType | 'none'>('none');
   const [secondaryPayerAmount, setSecondaryPayerAmount] = useState('');
   const [items, setItems] = useState<FormItem[]>([
-    { id: crypto.randomUUID(), part_id: null, description: '', quantity: '1', unit_price: '' },
+    emptyItem(),
   ]);
 
   useEffect(() => {
     async function fetchData() {
-      const [clientsRes, partsRes] = await Promise.all([
+      const [clientsRes, partsRes, tasksRes, garageRes] = await Promise.all([
         supabase.from('clients').select('*').order('last_name'),
         supabase.from('parts').select('*').order('name'),
+        supabase.from('canned_tasks').select('*').order('name'),
+        supabase.from('garages').select('hourly_rate').eq('id', profile?.garage_id ?? '').maybeSingle(),
       ]);
       setClients(clientsRes.data as Client[] ?? []);
       setParts(partsRes.data as Part[] ?? []);
+      setCannedTasks(tasksRes.data as CannedTask[] ?? []);
+      setGarage(garageRes.data as { hourly_rate: number } | null);
       setLoading(false);
     }
     fetchData();
@@ -81,7 +92,7 @@ export default function NewInvoicePage() {
   }, [clientId]);
 
   function addItem() {
-    setItems([...items, { id: crypto.randomUUID(), part_id: null, description: '', quantity: '1', unit_price: '' }]);
+    setItems([...items, emptyItem()]);
   }
 
   function removeItem(id: string) {
@@ -99,9 +110,25 @@ export default function NewInvoicePage() {
         if (part) {
           updated.description = part.name;
           updated.unit_price = part.unit_price.toString();
+          updated.item_type = 'piece' as ItemType;
         }
       }
+      if (field === 'item_type' && value === 'main_oeuvre' && !updated.unit_price) {
+        updated.unit_price = String(garage?.hourly_rate ?? 120);
+      }
       return updated;
+    }));
+  }
+
+  function applyCannedTask(id: string, taskId: string) {
+    const task = cannedTasks.find((t2) => t2.id === taskId);
+    if (!task) return;
+    setItems(items.map((i) => {
+      if (i.id !== id) return i;
+      if (task.default_labor_hours != null) {
+        return { ...i, part_id: null, description: task.name, quantity: String(task.default_labor_hours), unit_price: String(garage?.hourly_rate ?? 120), item_type: 'main_oeuvre' as ItemType };
+      }
+      return { ...i, part_id: null, description: task.name, quantity: '1', unit_price: task.default_price != null ? String(task.default_price) : '', item_type: 'piece' as ItemType };
     }));
   }
 
@@ -163,6 +190,7 @@ export default function NewInvoicePage() {
       quantity: parseFloat(item.quantity) || 1,
       unit_price: parseFloat(item.unit_price) || 0,
       line_total: Math.round((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0) * 100) / 100,
+      item_type: item.item_type,
     }));
 
     const { error: itemsError } = await supabase.from('invoice_items').insert(itemPayload);
@@ -266,22 +294,44 @@ export default function NewInvoicePage() {
             <div key={item.id} className="flex flex-col sm:flex-row gap-2 items-start sm:items-end">
               <div className="flex-1 min-w-0 space-y-1.5">
                 <Label className="text-xs text-muted-foreground">{t('invNew.itemDesc')} {index + 1}</Label>
-                <Select
-                  value={item.part_id ?? 'custom'}
-                  onValueChange={(v) => updateItem(item.id, 'part_id', v === 'custom' ? '' : v)}
-                >
-                  <SelectTrigger className="mb-1">
-                    <SelectValue placeholder={t('invNew.selectTask')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="custom">{t('invNew.itemDesc')}</SelectItem>
-                    {parts.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.reference} — {p.name} ({formatCHF(p.unit_price)})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                  <Select
+                    value={item.item_type}
+                    onValueChange={(v) => updateItem(item.id, 'item_type', v)}
+                  >
+                    <SelectTrigger className="w-36 shrink-0"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="piece">{t('items.piece')}</SelectItem>
+                      <SelectItem value="main_oeuvre">{t('items.labor')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={item.part_id ?? 'custom'}
+                    onValueChange={(v) => {
+                      if (v === 'custom') updateItem(item.id, 'part_id', '');
+                      else if (v.startsWith('task-')) applyCannedTask(item.id, v.slice(5));
+                      else updateItem(item.id, 'part_id', v);
+                    }}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder={t('invNew.selectTask')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="custom">{t('invNew.itemDesc')}</SelectItem>
+                      {parts.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.reference} — {p.name} ({formatCHF(p.unit_price)})
+                        </SelectItem>
+                      ))}
+                      {cannedTasks.length > 0 && <SelectItem value="__tasks__" disabled>{t('cannedTasks.pickTask')}</SelectItem>}
+                      {cannedTasks.map((task) => (
+                        <SelectItem key={task.id} value={`task-${task.id}`}>
+                          {task.name}{task.default_labor_hours != null ? ` — ${task.default_labor_hours}h` : task.default_price != null ? ` (${formatCHF(task.default_price)})` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Input
                   placeholder={t('invNew.itemDesc')}
                   value={item.description}
@@ -289,7 +339,7 @@ export default function NewInvoicePage() {
                 />
               </div>
               <div className="w-20 space-y-1.5">
-                <Label className="text-xs text-muted-foreground">{t('admin.appts.qty')}</Label>
+                <Label className="text-xs text-muted-foreground">{item.item_type === 'main_oeuvre' ? t('items.hours') : t('admin.appts.qty')}</Label>
                 <Input
                   type="number"
                   step="0.5"

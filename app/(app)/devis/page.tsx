@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { PageHeader } from '@/components/page-header';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -39,12 +39,14 @@ import {
   type ServiceRequest,
   type DevisItem,
   type Garage,
+  type CannedTask,
+  type ItemType,
 } from '@/lib/types/database';
 import { Plus, Trash2, Loader2, FileDown, Check, X, FilePlus2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/auth-context';
-import { localDateStr, localDateStrPlusDays } from '@/lib/utils';
+import { localDateStrPlusDays } from '@/lib/utils';
 import { generateDevisPDF, garageToPdfInfo } from '@/lib/pdf';
 
 interface FormItem {
@@ -53,9 +55,14 @@ interface FormItem {
   description: string;
   quantity: string;
   unit_price: string;
+  item_type: ItemType;
 }
 
 type TabKey = 'pending' | 'sent' | 'accepted' | 'refused';
+
+function emptyItem(): FormItem {
+  return { id: crypto.randomUUID(), part_id: null, description: '', quantity: '1', unit_price: '', item_type: 'piece' };
+}
 
 export default function DevisPage() {
   const { t } = useI18n();
@@ -66,6 +73,7 @@ export default function DevisPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [parts, setParts] = useState<Part[]>([]);
+  const [cannedTasks, setCannedTasks] = useState<CannedTask[]>([]);
   const [garage, setGarage] = useState<Garage | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('pending');
 
@@ -74,9 +82,7 @@ export default function DevisPage() {
   const [vehicleId, setVehicleId] = useState('');
   const [description, setDescription] = useState('');
   const [validUntil, setValidUntil] = useState(localDateStrPlusDays(30));
-  const [items, setItems] = useState<FormItem[]>([
-    { id: crypto.randomUUID(), part_id: null, description: '', quantity: '1', unit_price: '' },
-  ]);
+  const [items, setItems] = useState<FormItem[]>([emptyItem()]);
 
   const [editOpen, setEditOpen] = useState(false);
   const [editingDevis, setEditingDevis] = useState<ServiceRequest | null>(null);
@@ -84,6 +90,7 @@ export default function DevisPage() {
 
   const garageId = profile?.garage_id ?? null;
   const isPrivileged = profile?.role === 'admin' || profile?.role === 'secretaire';
+  const hourlyRate = garage?.hourly_rate ?? 120;
 
   const fetchDevis = useCallback(async () => {
     if (!garageId) return;
@@ -98,14 +105,16 @@ export default function DevisPage() {
   useEffect(() => {
     async function fetchData() {
       if (!garageId) return;
-      const [clientsRes, partsRes, garageRes] = await Promise.all([
+      const [clientsRes, partsRes, garageRes, tasksRes] = await Promise.all([
         supabase.from('clients').select('*').eq('garage_id', garageId).order('last_name'),
         supabase.from('parts').select('*').eq('garage_id', garageId).order('name'),
         supabase.from('garages').select('*').eq('id', garageId).maybeSingle(),
+        supabase.from('canned_tasks').select('*').eq('garage_id', garageId).order('name'),
       ]);
       setClients(clientsRes.data as Client[] ?? []);
       setParts(partsRes.data as Part[] ?? []);
       setGarage(garageRes.data as Garage ?? null);
+      setCannedTasks(tasksRes.data as CannedTask[] ?? []);
       await fetchDevis();
       setLoading(false);
     }
@@ -125,13 +134,39 @@ export default function DevisPage() {
   }, [clientId]);
 
   function addItem() {
-    setItems([...items, { id: crypto.randomUUID(), part_id: null, description: '', quantity: '1', unit_price: '' }]);
+    setItems([...items, emptyItem()]);
   }
 
   function removeItem(id: string) {
     if (items.length > 1) {
       setItems(items.filter((i) => i.id !== id));
     }
+  }
+
+  function applyCannedTask(itemList: FormItem[], id: string, taskId: string): FormItem[] {
+    const task = cannedTasks.find((t2) => t2.id === taskId);
+    if (!task) return itemList;
+    return itemList.map((i) => {
+      if (i.id !== id) return i;
+      if (task.default_labor_hours != null) {
+        return {
+          ...i,
+          part_id: null,
+          description: task.name,
+          quantity: String(task.default_labor_hours),
+          unit_price: String(hourlyRate),
+          item_type: 'main_oeuvre' as ItemType,
+        };
+      }
+      return {
+        ...i,
+        part_id: null,
+        description: task.name,
+        quantity: '1',
+        unit_price: task.default_price != null ? String(task.default_price) : '',
+        item_type: 'piece' as ItemType,
+      };
+    });
   }
 
   function updateItem(id: string, field: keyof FormItem, value: string) {
@@ -143,7 +178,11 @@ export default function DevisPage() {
         if (part) {
           updated.description = part.name;
           updated.unit_price = part.unit_price.toString();
+          updated.item_type = 'piece' as ItemType;
         }
+      }
+      if (field === 'item_type' && value === 'main_oeuvre' && !updated.unit_price) {
+        updated.unit_price = String(hourlyRate);
       }
       return updated;
     }));
@@ -158,7 +197,11 @@ export default function DevisPage() {
         if (part) {
           updated.description = part.name;
           updated.unit_price = part.unit_price.toString();
+          updated.item_type = 'piece' as ItemType;
         }
+      }
+      if (field === 'item_type' && value === 'main_oeuvre' && !updated.unit_price) {
+        updated.unit_price = String(hourlyRate);
       }
       return updated;
     }));
@@ -179,7 +222,7 @@ export default function DevisPage() {
     setVehicleId('');
     setDescription('');
     setValidUntil(localDateStrPlusDays(30));
-    setItems([{ id: crypto.randomUUID(), part_id: null, description: '', quantity: '1', unit_price: '' }]);
+    setItems([emptyItem()]);
   }
 
   async function handleCreate() {
@@ -216,6 +259,7 @@ export default function DevisPage() {
         quantity: parseFloat(item.quantity) || 1,
         unit_price: parseFloat(item.unit_price) || 0,
         line_total: Math.round((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0) * 100) / 100,
+        item_type: item.item_type,
       }));
 
       const { error: itemsError } = await supabase.from('devis_items').insert(itemPayload);
@@ -241,10 +285,11 @@ export default function DevisPage() {
         description: di.description,
         quantity: String(di.quantity),
         unit_price: String(di.unit_price),
+        item_type: (di.item_type ?? 'piece') as ItemType,
       })),
     );
     if ((devis.devis_items ?? []).length === 0) {
-      setEditItems([{ id: crypto.randomUUID(), part_id: null, description: '', quantity: '1', unit_price: '' }]);
+      setEditItems([emptyItem()]);
     }
     setEditOpen(true);
   }
@@ -268,6 +313,7 @@ export default function DevisPage() {
         quantity: parseFloat(item.quantity) || 1,
         unit_price: parseFloat(item.unit_price) || 0,
         line_total: Math.round((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0) * 100) / 100,
+        item_type: item.item_type,
       }));
 
       const { error: itemsError } = await supabase.from('devis_items').insert(itemPayload);
@@ -359,6 +405,192 @@ export default function DevisPage() {
     if (status === 'devis_refuse') return <Badge variant="destructive">{t('devisPage.tabRefused')}</Badge>;
     return null;
   };
+
+  function renderGroupedItems(devisItems: DevisItem[]) {
+    const laborItems = devisItems.filter((i) => i.item_type === 'main_oeuvre');
+    const partItems = devisItems.filter((i) => (i.item_type ?? 'piece') === 'piece');
+    const laborSub = laborItems.reduce((s, i) => s + Number(i.line_total), 0);
+    const partSub = partItems.reduce((s, i) => s + Number(i.line_total), 0);
+    const dSubtotal = laborSub + partSub;
+    const dCalc = calculateVAT(dSubtotal);
+
+    const renderRow = (item: DevisItem) => (
+      <div key={item.id} className="px-2 py-1.5 text-sm">
+        <div className="grid grid-cols-12 gap-2">
+          <div className="col-span-6">{item.description}</div>
+          <div className="col-span-2 text-center hidden sm:block">{item.quantity}</div>
+          <div className="col-span-2 text-right hidden sm:block">{formatCHF(item.unit_price)}</div>
+          <div className="col-span-2 text-right font-medium hidden sm:block">{formatCHF(item.line_total)}</div>
+        </div>
+        <div className="sm:hidden mt-1 space-y-0.5">
+          <div className="flex justify-between">
+            <span className="text-xs text-muted-foreground">{t('clientInv.qty')}</span>
+            <span>{item.quantity}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-xs text-muted-foreground">{t('clientInv.unitPrice')}</span>
+            <span>{formatCHF(item.unit_price)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-xs text-muted-foreground">{t('clientInv.totalCol')}</span>
+            <span className="font-medium">{formatCHF(item.line_total)}</span>
+          </div>
+        </div>
+      </div>
+    );
+
+    return (
+      <div className="border-t pt-2 space-y-2">
+        {laborItems.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-2 mb-1">{t('items.labor')}</p>
+            <div className="hidden sm:grid grid-cols-12 gap-2 px-2 py-1.5 text-xs font-medium text-muted-foreground">
+              <div className="col-span-6">{t('clientInv.description')}</div>
+              <div className="col-span-2 text-center">{t('clientInv.qty')}</div>
+              <div className="col-span-2 text-right">{t('clientInv.unitPrice')}</div>
+              <div className="col-span-2 text-right">{t('clientInv.totalCol')}</div>
+            </div>
+            {laborItems.map(renderRow)}
+            <div className="flex justify-between px-2 py-1 text-sm">
+              <span className="text-muted-foreground">{t('items.laborSubtotal')}</span>
+              <span className="font-medium">{formatCHF(laborSub)}</span>
+            </div>
+          </div>
+        )}
+        {partItems.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-2 mb-1">{t('items.parts')}</p>
+            <div className="hidden sm:grid grid-cols-12 gap-2 px-2 py-1.5 text-xs font-medium text-muted-foreground">
+              <div className="col-span-6">{t('clientInv.description')}</div>
+              <div className="col-span-2 text-center">{t('clientInv.qty')}</div>
+              <div className="col-span-2 text-right">{t('clientInv.unitPrice')}</div>
+              <div className="col-span-2 text-right">{t('clientInv.totalCol')}</div>
+            </div>
+            {partItems.map(renderRow)}
+            <div className="flex justify-between px-2 py-1 text-sm">
+              <span className="text-muted-foreground">{t('items.partsSubtotal')}</span>
+              <span className="font-medium">{formatCHF(partSub)}</span>
+            </div>
+          </div>
+        )}
+        <div className="px-2 pt-2 border-t space-y-1 max-w-xs ml-auto">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{t('devisPage.subtotal')}</span>
+            <span>{formatCHF(dSubtotal)}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{t('devisPage.vat')}</span>
+            <span>{formatCHF(dCalc.vat)}</span>
+          </div>
+          <div className="flex justify-between font-bold">
+            <span>{t('devisPage.total')}</span>
+            <span>{formatCHF(dCalc.total)}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderItemEditor(
+    item: FormItem,
+    index: number,
+    onUpdate: (id: string, field: keyof FormItem, value: string) => void,
+    onRemove: (id: string) => void,
+    onAddTask: (id: string, taskId: string) => void,
+    canRemove: boolean,
+  ) {
+    const isLabor = item.item_type === 'main_oeuvre';
+    return (
+      <div key={item.id} className="flex flex-col sm:flex-row gap-2 items-start sm:items-end">
+        <div className="flex-1 min-w-0 space-y-1.5">
+          <Label className="text-xs text-muted-foreground">{t('devisPage.items')} {index + 1}</Label>
+          <div className="flex gap-2">
+            <Select
+              value={item.item_type}
+              onValueChange={(v) => onUpdate(item.id, 'item_type', v)}
+            >
+              <SelectTrigger className="w-36 shrink-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="piece">{t('items.piece')}</SelectItem>
+                <SelectItem value="main_oeuvre">{t('items.labor')}</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={item.part_id ?? 'custom'}
+              onValueChange={(v) => {
+                if (v === 'custom') {
+                  onUpdate(item.id, 'part_id', '');
+                } else if (v.startsWith('task-')) {
+                  onAddTask(item.id, v.slice(5));
+                } else {
+                  onUpdate(item.id, 'part_id', v);
+                }
+              }}
+            >
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder={t('invNew.selectTask')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="custom">{t('invNew.itemDesc')}</SelectItem>
+                {parts.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.reference} — {p.name} ({formatCHF(p.unit_price)})
+                  </SelectItem>
+                ))}
+                {cannedTasks.length > 0 && <SelectItem value="__tasks__" disabled>{t('cannedTasks.pickTask')}</SelectItem>}
+                {cannedTasks.map((task) => (
+                  <SelectItem key={task.id} value={`task-${task.id}`}>
+                    {task.name}{task.default_labor_hours != null ? ` — ${task.default_labor_hours}h` : task.default_price != null ? ` (${formatCHF(task.default_price)})` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Input
+            placeholder={t('invNew.itemDesc')}
+            value={item.description}
+            onChange={(e) => onUpdate(item.id, 'description', e.target.value)}
+          />
+        </div>
+        <div className="w-20 space-y-1.5">
+          <Label className="text-xs text-muted-foreground">{isLabor ? t('items.hours') : t('admin.appts.qty')}</Label>
+          <Input
+            type="number"
+            step="0.5"
+            value={item.quantity}
+            onChange={(e) => onUpdate(item.id, 'quantity', e.target.value)}
+          />
+        </div>
+        <div className="w-32 space-y-1.5">
+          <Label className="text-xs text-muted-foreground">{t('admin.appts.unitPrice')}</Label>
+          <Input
+            type="number"
+            step="0.05"
+            placeholder="0.00"
+            value={item.unit_price}
+            onChange={(e) => onUpdate(item.id, 'unit_price', e.target.value)}
+          />
+        </div>
+        <div className="w-28 space-y-1.5">
+          <Label className="text-xs text-muted-foreground">{t('invNew.lineTotal')}</Label>
+          <div className="h-10 flex items-center px-3 rounded-md border bg-muted/50 text-sm font-medium">
+            {formatCHF((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0))}
+          </div>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="mt-5 shrink-0 hover:text-destructive"
+          onClick={() => onRemove(item.id)}
+          disabled={!canRemove}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -461,54 +693,7 @@ export default function DevisPage() {
                         </div>
                       </div>
 
-                      {devisItems.length > 0 && (
-                        <div className="border-t pt-2">
-                          <div className="hidden sm:grid grid-cols-12 gap-2 px-2 py-1.5 text-xs font-medium text-muted-foreground">
-                            <div className="col-span-6">{t('clientInv.description')}</div>
-                            <div className="col-span-2 text-center">{t('clientInv.qty')}</div>
-                            <div className="col-span-2 text-right">{t('clientInv.unitPrice')}</div>
-                            <div className="col-span-2 text-right">{t('clientInv.totalCol')}</div>
-                          </div>
-                          {devisItems.map((item) => (
-                            <div key={item.id} className="px-2 py-1.5 text-sm">
-                              <div className="grid grid-cols-12 gap-2">
-                                <div className="col-span-6">{item.description}</div>
-                                <div className="col-span-2 text-center hidden sm:block">{item.quantity}</div>
-                                <div className="col-span-2 text-right hidden sm:block">{formatCHF(item.unit_price)}</div>
-                                <div className="col-span-2 text-right font-medium hidden sm:block">{formatCHF(item.line_total)}</div>
-                              </div>
-                              <div className="sm:hidden mt-1 space-y-0.5">
-                                <div className="flex justify-between">
-                                  <span className="text-xs text-muted-foreground">{t('clientInv.qty')}</span>
-                                  <span>{item.quantity}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-xs text-muted-foreground">{t('clientInv.unitPrice')}</span>
-                                  <span>{formatCHF(item.unit_price)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-xs text-muted-foreground">{t('clientInv.totalCol')}</span>
-                                  <span className="font-medium">{formatCHF(item.line_total)}</span>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                          <div className="px-2 pt-2 border-t space-y-1 max-w-xs ml-auto">
-                            <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">{t('devisPage.subtotal')}</span>
-                              <span>{formatCHF(dSubtotal)}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">{t('devisPage.vat')}</span>
-                              <span>{formatCHF(dCalc.vat)}</span>
-                            </div>
-                            <div className="flex justify-between font-bold">
-                              <span>{t('devisPage.total')}</span>
-                              <span>{formatCHF(dCalc.total)}</span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                      {devisItems.length > 0 && renderGroupedItems(devisItems)}
 
                       {devis.description && (
                         <div className="border-t pt-2">
@@ -582,67 +767,10 @@ export default function DevisPage() {
                   <Plus className="h-4 w-4 mr-1" /> {t('common.add')}
                 </Button>
               </div>
-              {items.map((item, index) => (
-                <div key={item.id} className="flex flex-col sm:flex-row gap-2 items-start sm:items-end">
-                  <div className="flex-1 min-w-0 space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">{t('devisPage.items')} {index + 1}</Label>
-                    <Select
-                      value={item.part_id ?? 'custom'}
-                      onValueChange={(v) => updateItem(item.id, 'part_id', v === 'custom' ? '' : v)}
-                    >
-                      <SelectTrigger className="mb-1">
-                        <SelectValue placeholder={t('invNew.selectTask')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="custom">{t('invNew.itemDesc')}</SelectItem>
-                        {parts.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.reference} — {p.name} ({formatCHF(p.unit_price)})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      placeholder={t('invNew.itemDesc')}
-                      value={item.description}
-                      onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                    />
-                  </div>
-                  <div className="w-20 space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">{t('admin.appts.qty')}</Label>
-                    <Input
-                      type="number"
-                      step="0.5"
-                      value={item.quantity}
-                      onChange={(e) => updateItem(item.id, 'quantity', e.target.value)}
-                    />
-                  </div>
-                  <div className="w-32 space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">{t('admin.appts.unitPrice')}</Label>
-                    <Input
-                      type="number"
-                      step="0.05"
-                      placeholder="0.00"
-                      value={item.unit_price}
-                      onChange={(e) => updateItem(item.id, 'unit_price', e.target.value)}
-                    />
-                  </div>
-                  <div className="w-28 space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">{t('invNew.lineTotal')}</Label>
-                    <div className="h-10 flex items-center px-3 rounded-md border bg-muted/50 text-sm font-medium">
-                      {formatCHF((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0))}
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="mt-5 shrink-0 hover:text-destructive"
-                    onClick={() => removeItem(item.id)}
-                    disabled={items.length === 1}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+              {items.map((item, index) => renderItemEditor(
+                item, index, updateItem, removeItem,
+                (id, taskId) => setItems(applyCannedTask(items, id, taskId)),
+                items.length > 1,
               ))}
             </div>
 
@@ -682,71 +810,13 @@ export default function DevisPage() {
           </DialogHeader>
 
           <div className="space-y-3">
-            {editItems.map((item, index) => (
-              <div key={item.id} className="flex flex-col sm:flex-row gap-2 items-start sm:items-end">
-                <div className="flex-1 min-w-0 space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">{t('devisPage.items')} {index + 1}</Label>
-                  <Select
-                    value={item.part_id ?? 'custom'}
-                    onValueChange={(v) => updateEditItem(item.id, 'part_id', v === 'custom' ? '' : v)}
-                  >
-                    <SelectTrigger className="mb-1">
-                      <SelectValue placeholder={t('invNew.selectTask')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="custom">{t('invNew.itemDesc')}</SelectItem>
-                      {parts.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.reference} — {p.name} ({formatCHF(p.unit_price)})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    placeholder={t('invNew.itemDesc')}
-                    value={item.description}
-                    onChange={(e) => updateEditItem(item.id, 'description', e.target.value)}
-                  />
-                </div>
-                <div className="w-20 space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">{t('admin.appts.qty')}</Label>
-                  <Input
-                    type="number"
-                    step="0.5"
-                    value={item.quantity}
-                    onChange={(e) => updateEditItem(item.id, 'quantity', e.target.value)}
-                  />
-                </div>
-                <div className="w-32 space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">{t('admin.appts.unitPrice')}</Label>
-                  <Input
-                    type="number"
-                    step="0.05"
-                    placeholder="0.00"
-                    value={item.unit_price}
-                    onChange={(e) => updateEditItem(item.id, 'unit_price', e.target.value)}
-                  />
-                </div>
-                <div className="w-28 space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">{t('invNew.lineTotal')}</Label>
-                  <div className="h-10 flex items-center px-3 rounded-md border bg-muted/50 text-sm font-medium">
-                    {formatCHF((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0))}
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="mt-5 shrink-0 hover:text-destructive"
-                  onClick={() => {
-                    if (editItems.length > 1) setEditItems(editItems.filter((i) => i.id !== item.id));
-                  }}
-                  disabled={editItems.length === 1}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
+            {editItems.map((item, index) => renderItemEditor(
+              item, index, updateEditItem,
+              (id) => { if (editItems.length > 1) setEditItems(editItems.filter((i) => i.id !== id)); },
+              (id, taskId) => setEditItems(applyCannedTask(editItems, id, taskId)),
+              editItems.length > 1,
             ))}
-            <Button size="sm" variant="outline" onClick={() => setEditItems([...editItems, { id: crypto.randomUUID(), part_id: null, description: '', quantity: '1', unit_price: '' }])}>
+            <Button size="sm" variant="outline" onClick={() => setEditItems([...editItems, emptyItem()])}>
               <Plus className="h-4 w-4 mr-1" /> {t('common.add')}
             </Button>
 
