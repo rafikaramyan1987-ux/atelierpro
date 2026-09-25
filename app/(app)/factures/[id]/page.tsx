@@ -313,7 +313,7 @@ export default function InvoiceDetailPage() {
               <div className="col-span-6">{t('admin.appts.itemDesc')}</div>
               <div className="col-span-2 text-center">{t('admin.appts.qty')}</div>
               <div className="col-span-2 text-right">{t('admin.appts.unitPrice')}</div>
-              <div className="col-span-2 text-right">{t('admin.appts.quoteTotal')}</div>
+              <div className="col-span-2 text-right">{t('invNew.lineTotal')}</div>
             </div>
           </div>
           {items.map((item) => (
@@ -416,10 +416,21 @@ export default function InvoiceDetailPage() {
       {invoice.notes && (
         <Card className="border-border/60">
           <CardHeader>
-            <CardTitle className="text-base">{t('invDetail.notes')}</CardTitle>
+            <CardTitle className="text-base">{t('invNew.notesLabel')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground whitespace-pre-wrap">{invoice.notes}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {invoice.internal_notes && (
+        <Card className="border-border/60 border-warning/30">
+          <CardHeader>
+            <CardTitle className="text-base">{t('invNew.internalNotesLabel')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{invoice.internal_notes}</p>
           </CardContent>
         </Card>
       )}

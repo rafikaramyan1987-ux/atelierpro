@@ -47,6 +47,7 @@ export default function NewInvoicePage() {
   const [issueDate, setIssueDate] = useState(localDateStr());
   const [dueDate, setDueDate] = useState(localDateStrPlusDays(30));
   const [notes, setNotes] = useState('');
+  const [internalNotes, setInternalNotes] = useState('');
   const [payerType, setPayerType] = useState<PayerType>('client');
   const [secondaryPayerType, setSecondaryPayerType] = useState<PayerType | 'none'>('none');
   const [secondaryPayerAmount, setSecondaryPayerAmount] = useState('');
@@ -142,6 +143,7 @@ export default function NewInvoicePage() {
       issue_date: issueDate,
       due_date: dueDate,
       notes: notes || null,
+      internal_notes: internalNotes || null,
       payer_type: payerType,
       secondary_payer_type: secondaryPayerType !== 'none' ? secondaryPayerType : null,
       secondary_payer_amount: secondaryPayerType !== 'none' && secondaryPayerAmount ? parseFloat(secondaryPayerAmount) : null,
@@ -200,15 +202,15 @@ export default function NewInvoicePage() {
       {/* Client & vehicle */}
       <Card className="border-border/60">
         <CardHeader>
-          <CardTitle className="text-base">{t('admin.invoices.title')}</CardTitle>
+          <CardTitle className="text-base">{t('invNew.details')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>{t('admin.clients.title')} *</Label>
+              <Label>{t('invNew.client')}</Label>
               <Select value={clientId} onValueChange={setClientId}>
                 <SelectTrigger>
-                  <SelectValue placeholder={t('admin.clients.title')} />
+                  <SelectValue placeholder={t('invNew.selectClient')} />
                 </SelectTrigger>
                 <SelectContent>
                   {clients.map((c) => (
@@ -226,7 +228,7 @@ export default function NewInvoicePage() {
               <Label>{t('invoices.vehicle')} ({t('common.optional')})</Label>
               <Select value={vehicleId} onValueChange={setVehicleId} disabled={!clientId}>
                 <SelectTrigger>
-                  <SelectValue placeholder={t('admin.invoices.title')} />
+                  <SelectValue placeholder={t('invNew.selectVehicle')} />
                 </SelectTrigger>
                 <SelectContent>
                   {vehicles.map((v) => (
@@ -254,7 +256,7 @@ export default function NewInvoicePage() {
       {/* Items */}
       <Card className="border-border/60">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">{t('admin.appts.devisItems')}</CardTitle>
+          <CardTitle className="text-base">{t('invNew.items')}</CardTitle>
           <Button size="sm" variant="outline" onClick={addItem}>
             <Plus className="h-4 w-4 mr-1" /> {t('common.add')}
           </Button>
@@ -263,16 +265,16 @@ export default function NewInvoicePage() {
           {items.map((item, index) => (
             <div key={item.id} className="flex flex-col sm:flex-row gap-2 items-start sm:items-end">
               <div className="flex-1 min-w-0 space-y-1.5">
-                <Label className="text-xs text-muted-foreground">{t('admin.appts.itemDesc')} {index + 1}</Label>
+                <Label className="text-xs text-muted-foreground">{t('invNew.itemDesc')} {index + 1}</Label>
                 <Select
                   value={item.part_id ?? 'custom'}
                   onValueChange={(v) => updateItem(item.id, 'part_id', v === 'custom' ? '' : v)}
                 >
                   <SelectTrigger className="mb-1">
-                    <SelectValue placeholder={t('admin.appts.itemDesc')} />
+                    <SelectValue placeholder={t('invNew.selectTask')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="custom">{t('common.save')}</SelectItem>
+                    <SelectItem value="custom">{t('invNew.itemDesc')}</SelectItem>
                     {parts.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
                         {p.reference} — {p.name} ({formatCHF(p.unit_price)})
@@ -281,7 +283,7 @@ export default function NewInvoicePage() {
                   </SelectContent>
                 </Select>
                 <Input
-                  placeholder={t('admin.appts.itemDesc')}
+                  placeholder={t('invNew.itemDesc')}
                   value={item.description}
                   onChange={(e) => updateItem(item.id, 'description', e.target.value)}
                 />
@@ -306,7 +308,7 @@ export default function NewInvoicePage() {
                 />
               </div>
               <div className="w-28 space-y-1.5">
-                <Label className="text-xs text-muted-foreground">{t('admin.appts.quoteTotal')}</Label>
+                <Label className="text-xs text-muted-foreground">{t('invNew.lineTotal')}</Label>
                 <div className="h-10 flex items-center px-3 rounded-md border bg-muted/50 text-sm font-medium">
                   {formatCHF((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0))}
                 </div>
@@ -368,14 +370,22 @@ export default function NewInvoicePage() {
       {/* Notes */}
       <Card className="border-border/60">
         <CardHeader>
-          <CardTitle className="text-base">{t('invList.notes')}</CardTitle>
+          <CardTitle className="text-base">{t('invNew.notesLabel')}</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <Textarea
-            placeholder={t('admin.appts.notesPlaceholder')}
+            placeholder={t('invNew.notesLabel')}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">{t('invNew.internalNotesLabel')}</Label>
+            <Textarea
+              placeholder={t('invNew.internalNotesPlaceholder')}
+              value={internalNotes}
+              onChange={(e) => setInternalNotes(e.target.value)}
+            />
+          </div>
         </CardContent>
       </Card>
 

@@ -122,6 +122,7 @@ export interface Invoice {
   paid_date: string | null;
   payment_method: PaymentMethod | null;
   notes: string | null;
+  internal_notes: string | null;
   created_by: string | null;
   commission_amount: number | null;
   payer_type: PayerType;

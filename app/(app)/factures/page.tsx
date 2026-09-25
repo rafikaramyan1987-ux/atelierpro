@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import {
   Table,
   TableBody,
@@ -30,7 +31,8 @@ import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/auth-context';
 import type { Garage } from '@/lib/types/database';
-import { localDateStr } from '@/lib/utils';
+import { localDateStr, localDateStrPlusDays } from '@/lib/utils';
+import * as XLSX from 'xlsx';
 
 export default function FacturesPage() {
   const router = useRouter();
@@ -38,8 +40,8 @@ export default function FacturesPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [exportFrom, setExportFrom] = useState('');
-  const [exportTo, setExportTo] = useState('');
+  const [exportFrom, setExportFrom] = useState(localDateStr(new Date(new Date().getFullYear(), new Date().getMonth(), 1)));
+  const [exportTo, setExportTo] = useState(localDateStrPlusDays(0, new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)));
   const [exporting, setExporting] = useState(false);
   const { t } = useI18n();
   const { profile } = useAuth();
@@ -112,7 +114,7 @@ export default function FacturesPage() {
     }
   }
 
-  async function handleExportCSV() {
+  async function handleExportExcel() {
     setExporting(true);
     try {
       let query = supabase
@@ -130,7 +132,9 @@ export default function FacturesPage() {
       const { data, error } = await query;
       if (error) throw error;
 
-      const rows = (data as any[]) ?? [];
+      const allRows = (data as any[]) ?? [];
+      const rows = allRows.filter((inv) => inv.status !== 'brouillon');
+
       const headers = [
         t('export.invoiceNumber'),
         t('export.date'),
@@ -140,11 +144,10 @@ export default function FacturesPage() {
         t('export.totalTTC'),
         t('export.paymentStatus'),
         t('export.paymentMethod'),
-        t('export.paymentDate'),
+ t('export.paymentDate'),
       ];
 
-      const csvLines: string[] = [];
-      csvLines.push(headers.map((h) => `"${h.replace(/"/g, '""')}"`).join(';'));
+      const aoa: (string | number | Date)[][] = [headers];
 
       for (const inv of rows) {
         const clientName = inv.client?.company_name
@@ -152,35 +155,68 @@ export default function FacturesPage() {
         const statusLabel = inv.status === 'payee' ? t('invoices.paid')
           : inv.status === 'envoyee' ? t('invoices.unpaid')
           : inv.status === 'en_retard' ? t('invoices.late')
-          : inv.status === 'brouillon' ? t('invoices.draft')
+          : inv.status === 'paiement_declare' ? t('invoices.paymentDeclared')
+          : inv.status === 'en_attente_validation' ? t('invoices.pendingValidation')
           : inv.status;
         const methodLabel = inv.payment_method ? (PAYMENT_METHOD_LABELS[inv.payment_method as keyof typeof PAYMENT_METHOD_LABELS] ?? inv.payment_method) : '';
-        const paidDate = inv.paid_date ? new Date(inv.paid_date).toLocaleDateString('fr-CH') : '';
+        const paidDate = inv.paid_date ? new Date(inv.paid_date) : '';
 
-        const values = [
+        aoa.push([
           inv.invoice_number,
-          new Date(inv.issue_date).toLocaleDateString('fr-CH'),
+          new Date(inv.issue_date),
           clientName,
-          Number(inv.subtotal).toFixed(2),
-          Number(inv.vat_amount).toFixed(2),
-          Number(inv.total).toFixed(2),
+          Number(inv.subtotal),
+          Number(inv.vat_amount),
+          Number(inv.total),
           statusLabel,
           methodLabel,
           paidDate,
-        ];
-        csvLines.push(values.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(';'));
+        ]);
       }
 
-      const csv = csvLines.join('\r\n');
-      const bom = '\uFEFF';
-      const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      const dateStr = localDateStr();
-      a.download = `factures_${dateStr}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const totalSub = rows.reduce((s, inv) => s + Number(inv.subtotal), 0);
+      const totalVat = rows.reduce((s, inv) => s + Number(inv.vat_amount), 0);
+      const totalTotal = rows.reduce((s, inv) => s + Number(inv.total), 0);
+      aoa.push(['', '', 'TOTAL', totalSub, totalVat, totalTotal, '', '', '']);
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols'] = [
+        { wch: 18 }, { wch: 12 }, { wch: 28 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 20 }, { wch: 18 }, { wch: 14 },
+      ];
+      ws['!freeze'] = { ySplit: 1 };
+      ws['!merges'] = [];
+
+      const range = XLSX.utils.decode_range(ws['!ref']!);
+      for (let C = 0; C <= 8; C++) {
+        const cellAddr = XLSX.utils.encode_cell({ r: 0, c: C });
+        if (ws[cellAddr]) {
+          ws[cellAddr].s = { font: { bold: true } };
+        }
+      }
+      const totalRowIdx = aoa.length - 1;
+      for (let C = 0; C <= 8; C++) {
+        const cellAddr = XLSX.utils.encode_cell({ r: totalRowIdx, c: C });
+        if (ws[cellAddr]) {
+          ws[cellAddr].s = { font: { bold: true } };
+        }
+      }
+
+      for (let R = 1; R < aoa.length; R++) {
+        const dateCell = ws[XLSX.utils.encode_cell({ r: R, c: 1 })];
+        if (dateCell && typeof dateCell.v === 'object' && dateCell.v instanceof Date) {
+          dateCell.z = 'dd.mm.yyyy';
+          dateCell.t = 'd';
+        }
+        const paidCell = ws[XLSX.utils.encode_cell({ r: R, c: 8 })];
+        if (paidCell && typeof paidCell.v === 'object' && paidCell.v instanceof Date) {
+          paidCell.z = 'dd.mm.yyyy';
+          paidCell.t = 'd';
+        }
+      }
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Factures');
+      XLSX.writeFile(wb, `factures_${exportFrom}_${exportTo}.xlsx`);
       toast.success(t('export.success', { count: rows.length }));
     } catch (err: any) {
       toast.error(t('export.error'), { description: err.message });
@@ -201,9 +237,18 @@ export default function FacturesPage() {
     return true;
   });
 
-  const totalAmount = invoices.reduce((sum, inv) => sum + Number(inv.total), 0);
-  const paidAmount = invoices.filter((i) => i.status === 'payee').reduce((sum, inv) => sum + Number(inv.total), 0);
-  const pendingAmount = invoices.filter((i) => i.status === 'envoyee' || i.status === 'paiement_declare').reduce((sum, inv) => sum + Number(inv.total), 0);
+  const now = new Date();
+  const monthStart = localDateStr(new Date(now.getFullYear(), now.getMonth(), 1));
+  const monthEnd = localDateStrPlusDays(0, new Date(now.getFullYear(), now.getMonth() + 1, 0));
+  const totalAmount = invoices
+    .filter((inv) => inv.status !== 'brouillon' && inv.issue_date >= monthStart && inv.issue_date <= monthEnd)
+    .reduce((sum, inv) => sum + Number(inv.total), 0);
+  const paidAmount = invoices
+    .filter((i) => i.status === 'payee' && i.paid_date && i.paid_date >= monthStart && i.paid_date <= monthEnd)
+    .reduce((sum, inv) => sum + Number(inv.total), 0);
+  const pendingAmount = invoices
+    .filter((i) => i.status === 'envoyee' || i.status === 'en_retard' || i.status === 'paiement_declare')
+    .reduce((sum, inv) => sum + Number(inv.total), 0);
 
   return (
     <div className="p-6 space-y-6">
@@ -223,15 +268,21 @@ export default function FacturesPage() {
               <span className="text-sm font-medium">{t('export.title')}</span>
             </div>
             <div className="flex flex-col sm:flex-row gap-2 flex-1">
-              <Input type="date" value={exportFrom} onChange={(e) => setExportFrom(e.target.value)} className="sm:w-40" placeholder={t('export.from')} />
-              <Input type="date" value={exportTo} onChange={(e) => setExportTo(e.target.value)} className="sm:w-40" placeholder={t('export.to')} />
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">{t('export.fromLabel')}</Label>
+                <Input type="date" value={exportFrom} onChange={(e) => setExportFrom(e.target.value)} className="sm:w-40" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">{t('export.toLabel')}</Label>
+                <Input type="date" value={exportTo} onChange={(e) => setExportTo(e.target.value)} className="sm:w-40" />
+              </div>
             </div>
-            <Button variant="outline" onClick={handleExportCSV} disabled={exporting}>
+            <Button variant="outline" onClick={handleExportExcel} disabled={exporting}>
               {exporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-              {t('export.download')}
+              {t('export.downloadExcel')}
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground mt-2">{t('export.hint')}</p>
+          <p className="text-xs text-muted-foreground mt-2">{t('export.hintExcel')}</p>
         </CardContent>
       </Card>
 
@@ -239,19 +290,19 @@ export default function FacturesPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="border-border/60">
           <CardContent className="p-5">
-            <p className="text-sm text-muted-foreground mb-1">{t('admin.dashboard.revenue')}</p>
+            <p className="text-sm text-muted-foreground mb-1">{t('invoices.revenueMonth')}</p>
             <p className="text-2xl font-bold">{formatCHF(totalAmount)}</p>
           </CardContent>
         </Card>
         <Card className="border-border/60">
           <CardContent className="p-5">
-            <p className="text-sm text-muted-foreground mb-1">{t('invoices.totalPaid')}</p>
+            <p className="text-sm text-muted-foreground mb-1">{t('invoices.totalPaidMonth')}</p>
             <p className="text-2xl font-bold text-success">{formatCHF(paidAmount)}</p>
           </CardContent>
         </Card>
         <Card className="border-border/60">
           <CardContent className="p-5">
-            <p className="text-sm text-muted-foreground mb-1">{t('invoices.totalPending')}</p>
+            <p className="text-sm text-muted-foreground mb-1">{t('invoices.totalPendingAll')}</p>
             <p className="text-2xl font-bold text-primary">{formatCHF(pendingAmount)}</p>
           </CardContent>
         </Card>
