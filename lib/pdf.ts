@@ -1,9 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { SwissQRBill } from 'swissqrbill/svg';
-import { svg2pdf } from 'svg2pdf.js';
 import {
-  formatCHF,
   type Invoice,
   type InvoiceItem,
   type Client,
@@ -12,6 +10,17 @@ import {
   INVOICE_STATUS_LABELS,
   PAYMENT_METHOD_LABELS,
 } from './types/database';
+
+function pdfNumber(n: number, decimals = 0): string {
+  const fixed = Math.abs(n).toFixed(decimals);
+  const [intPart, decPart] = fixed.split('.');
+  const withSep = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, "'");
+  return (n < 0 ? '-' : '') + (decPart ? `${withSep}.${decPart}` : withSep);
+}
+
+function pdfAmount(n: number): string {
+  return `${pdfNumber(Number(n), 2)} CHF`;
+}
 
 export interface GaragePdfInfo {
   name: string;
@@ -137,7 +146,7 @@ export async function generateInvoicePDF(
       doc.text(`VIN: ${vehicle.vin}`, pageWidth - 90, 69);
     }
     if (vehicle.mileage) {
-      doc.text(`Kilométrage: ${vehicle.mileage.toLocaleString('fr-CH')} km`, pageWidth - 90, 75);
+      doc.text(`Kilométrage: ${pdfNumber(vehicle.mileage)} km`, pageWidth - 90, 75);
     }
   }
 
@@ -154,9 +163,9 @@ export async function generateInvoicePDF(
     head: [['Description', 'Qté', 'Prix unitaire', 'Total']],
     body: items.map((item) => [
       item.description,
-      item.quantity.toString(),
-      formatCHF(item.unit_price),
-      formatCHF(item.line_total),
+      pdfNumber(item.quantity),
+      pdfAmount(item.unit_price),
+      pdfAmount(item.line_total),
     ]),
     theme: 'striped',
     headStyles: {
@@ -182,17 +191,17 @@ export async function generateInvoicePDF(
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.text('Sous-total:', totalsX, totalsY);
-  doc.text(formatCHF(invoice.subtotal), pageWidth - 14, totalsY, { align: 'right' });
+  doc.text(pdfAmount(invoice.subtotal), pageWidth - 14, totalsY, { align: 'right' });
 
-  doc.text(`TVA (${invoice.vat_rate}%):`, totalsX, totalsY + 7);
-  doc.text(formatCHF(invoice.vat_amount), pageWidth - 14, totalsY + 7, { align: 'right' });
+  doc.text(`TVA (${pdfNumber(invoice.vat_rate)}%):`, totalsX, totalsY + 7);
+  doc.text(pdfAmount(invoice.vat_amount), pageWidth - 14, totalsY + 7, { align: 'right' });
 
   doc.setFillColor(13, 14, 20);
-  doc.roundedRect(totalsX - 4, totalsY + 10, 66, 12, 2, 2, 'F');
+  doc.roundedRect(pageWidth - 96, totalsY + 10, 86, 12, 2, 2, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.text('Total CHF:', totalsX, totalsY + 18);
-  doc.text(formatCHF(invoice.total), pageWidth - 14, totalsY + 18, { align: 'right' });
+  doc.text(pdfAmount(invoice.total), pageWidth - 14, totalsY + 18, { align: 'right' });
 
   const secondaryAmount = invoice.secondary_payer_amount != null ? Number(invoice.secondary_payer_amount) : 0;
   const clientOwes = Number(invoice.total) - secondaryAmount;
@@ -203,12 +212,12 @@ export async function generateInvoicePDF(
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.text('Part assurance:', totalsX, insuranceLabelY);
-    doc.text(formatCHF(secondaryAmount), pageWidth - 14, insuranceLabelY, { align: 'right' });
+    doc.text(pdfAmount(secondaryAmount), pageWidth - 14, insuranceLabelY, { align: 'right' });
     insuranceLabelY += 6;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.text('À payer par le client:', totalsX, insuranceLabelY);
-    doc.text(formatCHF(clientOwes), pageWidth - 14, insuranceLabelY, { align: 'right' });
+    doc.text(pdfAmount(clientOwes), pageWidth - 14, insuranceLabelY, { align: 'right' });
   }
 
   if (invoice.notes) {
@@ -264,20 +273,24 @@ export async function generateInvoicePDF(
         doc.addPage();
       }
 
-      const el = new DOMParser().parseFromString(svgString, 'image/svg+xml').documentElement;
-      const hidden = document.createElement('div');
-      hidden.style.position = 'absolute';
-      hidden.style.left = '-10000px';
-      hidden.style.top = '0';
-      hidden.style.width = '210mm';
-      hidden.appendChild(el);
-      document.body.appendChild(hidden);
-      try {
-        await svg2pdf(el, doc, { x: 0, y: qrY, width: 210, height: 105 });
-        qrDrawn = true;
-      } finally {
-        document.body.removeChild(hidden);
-      }
+      const svgDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
+      const img = new Image();
+      img.src = svgDataUrl;
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error('Failed to load QR SVG image'));
+      });
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 2480;
+      canvas.height = 1240;
+      const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const png = canvas.toDataURL('image/png');
+      doc.addImage(png, 'PNG', 0, qrY, 210, 105);
+      qrDrawn = true;
     } catch (err) {
       console.error('QR bill generation failed, saving PDF without payment part:', err);
     }
