@@ -165,7 +165,7 @@ export default function InvoiceDetailPage() {
         </Button>
         <Button onClick={handleDownload}>
           <Download className="h-4 w-4 mr-2" />
-          {t('common.save')}
+          {t('invDetail.downloadPdf')}
         </Button>
       </PageHeader>
 
@@ -248,10 +248,10 @@ export default function InvoiceDetailPage() {
                 onValueChange={(v) => updatePaymentMethod(v === 'none' ? 'qr_bill' : v as PaymentMethod)}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder={t('invDetail.noPaymentMethod')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">{t('common.save')}</SelectItem>
+                  <SelectItem value="none">{t('invDetail.noPaymentMethod')}</SelectItem>
                   <SelectItem value="qr_bill">{t('invoices.qrBill')}</SelectItem>
                   <SelectItem value="carte">{t('invoices.card')}</SelectItem>
                   <SelectItem value="twint">{t('invoices.twint')}</SelectItem>
@@ -312,7 +312,7 @@ export default function InvoiceDetailPage() {
           <CardTitle className="text-base">{t('invoices.details')}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="border-b">
+          <div className="border-b hidden sm:block">
             <div className="grid grid-cols-12 gap-2 px-6 py-3 text-xs font-medium text-muted-foreground">
               <div className="col-span-6">{t('admin.appts.itemDesc')}</div>
               <div className="col-span-2 text-center">{t('admin.appts.qty')}</div>
@@ -321,11 +321,27 @@ export default function InvoiceDetailPage() {
             </div>
           </div>
           {items.map((item) => (
-            <div key={item.id} className="grid grid-cols-12 gap-2 px-6 py-3 text-sm border-b last:border-0 hover:bg-secondary/30">
-              <div className="col-span-6">{item.description}</div>
-              <div className="col-span-2 text-center">{item.quantity}</div>
-              <div className="col-span-2 text-right">{formatCHF(item.unit_price)}</div>
-              <div className="col-span-2 text-right font-medium">{formatCHF(item.line_total)}</div>
+            <div key={item.id} className="px-6 py-3 text-sm border-b last:border-0 hover:bg-secondary/30">
+              <div className="grid grid-cols-12 gap-2">
+                <div className="col-span-6">{item.description}</div>
+                <div className="col-span-2 text-center hidden sm:block">{item.quantity}</div>
+                <div className="col-span-2 text-right hidden sm:block">{formatCHF(item.unit_price)}</div>
+                <div className="col-span-2 text-right font-medium hidden sm:block">{formatCHF(item.line_total)}</div>
+              </div>
+              <div className="sm:hidden mt-2 space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">{t('admin.appts.qty')}</span>
+                  <span>{item.quantity}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">{t('admin.appts.unitPrice')}</span>
+                  <span>{formatCHF(item.unit_price)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">{t('invNew.lineTotal')}</span>
+                  <span className="font-medium">{formatCHF(item.line_total)}</span>
+                </div>
+              </div>
             </div>
           ))}
         </CardContent>

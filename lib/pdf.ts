@@ -22,6 +22,11 @@ function pdfAmount(n: number): string {
   return `${pdfNumber(Number(n), 2)} CHF`;
 }
 
+function pdfRate(n: number): string {
+  const rounded = Math.round(n * 10) / 10;
+  return rounded % 1 === 0 ? pdfNumber(rounded) : pdfNumber(rounded, 1);
+}
+
 export interface GaragePdfInfo {
   name: string;
   address: string;
@@ -193,7 +198,7 @@ export async function generateInvoicePDF(
   doc.text('Sous-total:', totalsX, totalsY);
   doc.text(pdfAmount(invoice.subtotal), pageWidth - 14, totalsY, { align: 'right' });
 
-  doc.text(`TVA (${pdfNumber(invoice.vat_rate)}%):`, totalsX, totalsY + 7);
+  doc.text(`TVA (${pdfRate(invoice.vat_rate)}%):`, totalsX, totalsY + 7);
   doc.text(pdfAmount(invoice.vat_amount), pageWidth - 14, totalsY + 7, { align: 'right' });
 
   doc.setFillColor(13, 14, 20);

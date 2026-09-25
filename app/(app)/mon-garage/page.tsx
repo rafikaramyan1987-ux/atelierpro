@@ -259,6 +259,10 @@ export default function MonGaragePage() {
                     className={ibanError ? 'border-destructive' : ''}
                   />
                   {ibanError && <p className="text-xs text-destructive">{ibanError}</p>}
+                  <div className="flex items-start gap-2 rounded-lg bg-warning/5 border border-warning/20 p-3 text-sm">
+                    <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+                    <p className="text-muted-foreground">{t('garageProfile.ibanWarning')}</p>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t('garageProfile.vatNumber')}</label>
