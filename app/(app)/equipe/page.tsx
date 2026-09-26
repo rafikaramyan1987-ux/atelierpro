@@ -208,8 +208,10 @@ export default function EquipePage() {
       toast.error(t('team.cannotDeleteSelf'));
       return;
     }
-    const { error } = await supabase.from('profiles').delete().eq('id', member.id);
+    const { data: deleted, error } = await supabase.from('profiles').delete().eq('id', member.id).select('id');
     if (error) {
+      toast.error(t('team.deleteError'));
+    } else if (!deleted || deleted.length === 0) {
       toast.error(t('team.deleteError'));
     } else {
       toast.success(t('team.deletedToast'));
