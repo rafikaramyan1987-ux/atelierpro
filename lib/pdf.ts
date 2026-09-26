@@ -25,6 +25,7 @@ function drawGroupedTables(doc: any, items: PdfItem[], startY: number, laborLabe
 
   for (const group of [{ label: laborLabel, rows: laborItems, headers: laborHeaders }, { label: partsLabel, rows: partsItems, headers: partsHeaders }]) {
     if (group.rows.length === 0) continue;
+    if (y > 260) { doc.addPage(); y = 20; }
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(13, 14, 20);
@@ -50,6 +51,7 @@ function drawGroupedTables(doc: any, items: PdfItem[], startY: number, laborLabe
       margin: { left: 14, right: 14 },
     });
     y = (doc as any).lastAutoTable?.finalY ?? y + 20;
+    if (y > 260) { doc.addPage(); y = 20; }
     const groupSub = group.rows.reduce((s, i) => s + Number(i.line_total), 0);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
@@ -98,7 +100,14 @@ export interface GaragePdfInfo {
 
 function isValidIBAN(iban: string): boolean {
   const cleaned = iban.replace(/\s/g, '').toUpperCase();
-  return /^(CH|LI)\d{19}$/.test(cleaned);
+  if (!/^(CH|LI)\d{2}[A-Z0-9]{17}$/.test(cleaned)) return false;
+  const rearranged = cleaned.slice(4) + cleaned.slice(0, 4);
+  const numeric = rearranged.replace(/[A-Z]/g, (c) => String(c.charCodeAt(0) - 55));
+  let remainder = 0;
+  for (let i = 0; i < numeric.length; i++) {
+    remainder = (remainder * 10 + parseInt(numeric[i], 10)) % 97;
+  }
+  return remainder === 1;
 }
 
 function isQRIBAN(iban: string): boolean {
@@ -127,7 +136,7 @@ export async function generateInvoicePDF(
   vehicle: Vehicle | null,
   items: InvoiceItem[],
   garage: GaragePdfInfo | null,
-) {
+): Promise<{ qrIncluded: boolean }> {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -221,7 +230,8 @@ export async function generateInvoicePDF(
   }
 
   const afterTableY = drawGroupedTables(doc, items as PdfItem[], 105, 'Main d\'œuvre', 'Pièces', ['Description', 'Heures', 'Taux horaire', 'Total'], ['Description', 'Qté', 'Prix unitaire', 'Total'], 'Total', 'Sous-total');
-  const totalsY = afterTableY + 10;
+  let totalsY = afterTableY + 10;
+  if (totalsY + 30 > 260) { doc.addPage(); totalsY = 20; }
   const totalsX = pageWidth - 80;
 
   doc.setFontSize(10);
@@ -242,7 +252,7 @@ export async function generateInvoicePDF(
   doc.text(pdfAmount(invoice.total), pageWidth - 14, totalsY + 18, { align: 'right' });
 
   const secondaryAmount = invoice.secondary_payer_amount != null ? Number(invoice.secondary_payer_amount) : 0;
-  const clientOwes = Number(invoice.total) - secondaryAmount;
+  const clientOwes = Math.round((Number(invoice.total) - secondaryAmount) * 100) / 100;
   let insuranceLabelY = totalsY + 28;
 
   if (secondaryAmount > 0) {
@@ -258,19 +268,24 @@ export async function generateInvoicePDF(
     doc.text(pdfAmount(clientOwes), pageWidth - 14, insuranceLabelY, { align: 'right' });
   }
 
+  let notesEndY = insuranceLabelY;
   if (invoice.notes) {
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
-    doc.text('Notes:', 14, totalsY + 35);
     const splitNotes = doc.splitTextToSize(invoice.notes, pageWidth - 28);
-    doc.text(splitNotes, 14, totalsY + 41);
+    const notesHeight = splitNotes.length * 5;
+    const notesStartY = Math.max(totalsY + 35, insuranceLabelY + 1);
+    doc.text('Notes:', 14, notesStartY);
+    doc.text(splitNotes, 14, notesStartY + 6);
+    notesEndY = notesStartY + 6 + notesHeight;
   }
 
   const hasValidIBAN = garage?.iban && isValidIBAN(garage.iban);
   let qrDrawn = false;
+  const qrAmountValid = clientOwes > 0;
 
-  if (hasValidIBAN) {
+  if (hasValidIBAN && qrAmountValid) {
     const qrData: any = {
       creditor: {
         account: garage!.iban!.replace(/\s/g, '').toUpperCase(),
@@ -305,8 +320,7 @@ export async function generateInvoicePDF(
       const svgString = qrBill.toString();
 
       const qrY = 192;
-      const contentEndY = totalsY + 55;
-
+      const contentEndY = Math.max(notesEndY, insuranceLabelY);
       if (contentEndY > qrY) {
         doc.addPage();
       }
@@ -334,7 +348,17 @@ export async function generateInvoicePDF(
     }
   }
 
-  const footerY = qrDrawn ? 176 : pageHeight - 15;
+  if (!qrDrawn) {
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    const fallbackY = Math.min(Math.max(notesEndY, insuranceLabelY) + 5, 185);
+    doc.text('Paiement par virement — coordonnées bancaires manquantes', 14, fallbackY);
+  }
+
+  const footerPage = qrDrawn ? doc.getNumberOfPages() - 1 : doc.getNumberOfPages();
+  doc.setPage(footerPage);
+  const footerY = qrDrawn ? pageHeight - 15 : pageHeight - 15;
   doc.setFontSize(8);
   doc.setTextColor(120, 120, 120);
   const footerParts: string[] = [];
@@ -353,6 +377,8 @@ export async function generateInvoicePDF(
   }
   doc.text('Merci de votre confiance!', pageWidth / 2, footerY + 10, { align: 'center' });
 
+  if (qrDrawn) doc.setPage(doc.getNumberOfPages());
+
   const blob = doc.output('blob');
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -362,6 +388,7 @@ export async function generateInvoicePDF(
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  return { qrIncluded: qrDrawn };
 }
 
 export function garageToPdfInfo(garage: Garage | null): GaragePdfInfo | null {

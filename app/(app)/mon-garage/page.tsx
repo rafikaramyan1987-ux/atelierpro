@@ -105,9 +105,14 @@ export default function MonGaragePage() {
   function validateIban(value: string): boolean {
     const cleaned = normalizeIban(value);
     if (!cleaned) return true;
-    if (!/^(CH|LI)/.test(cleaned)) return false;
-    if (cleaned.length !== 21) return false;
-    return true;
+    if (!/^(CH|LI)\d{2}[A-Z0-9]{17}$/.test(cleaned)) return false;
+    const rearranged = cleaned.slice(4) + cleaned.slice(0, 4);
+    const numeric = rearranged.replace(/[A-Z]/g, (c) => String(c.charCodeAt(0) - 55));
+    let remainder = 0;
+    for (let i = 0; i < numeric.length; i++) {
+      remainder = (remainder * 10 + parseInt(numeric[i], 10)) % 97;
+    }
+    return remainder === 1;
   }
 
   async function handleSave() {

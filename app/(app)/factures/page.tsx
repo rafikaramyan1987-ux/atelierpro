@@ -88,8 +88,12 @@ export default function FacturesPage() {
       garage = g as Garage | null;
     }
     try {
-      await generateInvoicePDF(invoice, invoice.client, vehicle, items ?? [], garageToPdfInfo(garage));
-      toast.success(t('toast.pdfDownloaded'));
+      const { qrIncluded } = await generateInvoicePDF(invoice, invoice.client, vehicle, items ?? [], garageToPdfInfo(garage));
+      if (qrIncluded) {
+        toast.success(t('toast.pdfDownloaded'));
+      } else {
+        toast.warning(t('toast.pdfDownloadedNoQR'));
+      }
     } catch (err: any) {
       toast.error(t('toast.error'), { description: err?.message ?? String(err) });
     }

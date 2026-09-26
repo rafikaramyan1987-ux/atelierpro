@@ -173,6 +173,20 @@ export default function NewInvoicePage() {
       return;
     }
 
+    if (secondaryPayerType !== 'none' && secondaryPayerAmount) {
+      const spAmount = parseFloat(secondaryPayerAmount);
+      if (isNaN(spAmount) || spAmount < 0) {
+        toast.error(t('invList.createError'), { description: t('inv.secondaryPayerAmountInvalid') });
+        setSubmitting(false);
+        return;
+      }
+      if (spAmount > total) {
+        toast.error(t('invList.createError'), { description: t('inv.secondaryPayerAmountExceeds') });
+        setSubmitting(false);
+        return;
+      }
+    }
+
     setSubmitting(true);
 
     // Mechanics cannot issue invoices directly — send to validation instead

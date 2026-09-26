@@ -85,8 +85,12 @@ export default function ClientInvoicesPage() {
       }
     }
     try {
-      await generateInvoicePDF(invoice, client as any, invoice.vehicle ?? null, items ?? [], garageInfo);
-      toast.success(t('toast.pdfDownloaded'));
+      const { qrIncluded } = await generateInvoicePDF(invoice, client as any, invoice.vehicle ?? null, items ?? [], garageInfo);
+      if (qrIncluded) {
+        toast.success(t('toast.pdfDownloaded'));
+      } else {
+        toast.warning(t('toast.pdfDownloadedNoQR'));
+      }
     } catch (err: any) {
       toast.error(t('toast.error'), { description: err?.message ?? String(err) });
     }
