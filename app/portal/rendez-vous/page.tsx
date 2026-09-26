@@ -30,7 +30,6 @@ import { CalendarClock, Plus, Loader2, CheckCircle2, XCircle, Clock, Star, Messa
 import { toast } from 'sonner';
 import { cn, localDateStr } from '@/lib/utils';
 import { sendEmail, newAppointmentEmail } from '@/lib/email';
-import { FieldHint } from '@/components/ui/field-hint';
 
 export default function ClientRendezVousPage() {
   const { profile } = useAuth();
@@ -363,7 +362,7 @@ export default function ClientRendezVousPage() {
               <Label htmlFor="appt-garage">{t('devis.garage')} *</Label>
               {garages.length > 0 ? (
                 <Select value={form.garage_id || 'none'} onValueChange={(v) => setForm({ ...form, garage_id: v === 'none' ? '' : v })}>
-                  <SelectTrigger id="appt-garage" placeholder={t('ph.select')}>
+                  <SelectTrigger id="appt-garage">
                     <SelectValue placeholder={t('devis.selectGarage')} />
                   </SelectTrigger>
                   <SelectContent>
@@ -379,7 +378,7 @@ export default function ClientRendezVousPage() {
             <div className="space-y-2">
               <Label htmlFor="appt-vehicle">{t('garages.vehicle')}</Label>
               <Select value={form.vehicle_id || 'none'} onValueChange={(v) => setForm({ ...form, vehicle_id: v === 'none' ? '' : v })}>
-                <SelectTrigger id="appt-vehicle" placeholder={t('ph.selectVehicle')}>
+                <SelectTrigger id="appt-vehicle">
                   <SelectValue placeholder={t('garages.vehicle')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -401,7 +400,7 @@ export default function ClientRendezVousPage() {
               <div className="space-y-2">
                 <Label htmlFor="appt-time">{t('clientAppt.desiredSlot')}</Label>
                 <Select value={form.requested_time} onValueChange={(v) => setForm({ ...form, requested_time: v })}>
-                  <SelectTrigger id="appt-time" placeholder={t('ph.select')}>
+                  <SelectTrigger id="appt-time">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -415,7 +414,7 @@ export default function ClientRendezVousPage() {
             <div className="space-y-2">
               <Label htmlFor="appt-service">{t('appts.service')}</Label>
               <Select value={form.service_type} onValueChange={(v) => setForm({ ...form, service_type: v })}>
-                <SelectTrigger id="appt-service" placeholder={t('ph.select')}>
+                <SelectTrigger id="appt-service">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

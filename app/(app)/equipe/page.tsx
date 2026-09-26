@@ -38,7 +38,6 @@ import { ROLE_LABELS, type Profile, type UserRole } from '@/lib/types/database';
 import { UserCircle, Plus, Loader2, Shield, Wrench, Trash2, Mail, Phone, Briefcase, KeyRound, Copy, CheckCircle2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
-import { FieldHint } from '@/components/ui/field-hint';
 
 export default function EquipePage() {
   const { profile: currentUser } = useAuth();
@@ -341,7 +340,7 @@ export default function EquipePage() {
                           value={member.role}
                           onValueChange={(v) => updateRole(member, v as UserRole)}
                         >
-                          <SelectTrigger className="w-40" placeholder={t('ph.select')}>
+                          <SelectTrigger className="w-40">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -469,7 +468,7 @@ export default function EquipePage() {
                   <Input
                     id="member-name"
                     required
-                    placeholder={t('ph.employeeFirstName')}
+                    placeholder={t('ph.fullName')}
                     value={newMember.full_name}
                     onChange={(e) => setNewMember({ ...newMember, full_name: e.target.value })}
                   />
@@ -509,7 +508,7 @@ export default function EquipePage() {
                       value={newMember.role}
                       onValueChange={(v) => setNewMember({ ...newMember, role: v as UserRole })}
                     >
-                      <SelectTrigger id="member-role" placeholder={t('ph.select')}>
+                      <SelectTrigger id="member-role">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

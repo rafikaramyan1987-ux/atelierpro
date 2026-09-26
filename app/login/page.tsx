@@ -20,7 +20,6 @@ import {
 import { supabase } from '@/lib/supabase/client';
 import { Wrench, Mail, Lock, User, Loader2, ArrowRight, Car, Phone, ArrowLeft, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { LanguageSwitcher } from '@/components/language-switcher';
-import { FieldHint } from '@/components/ui/field-hint';
 import { toast } from 'sonner';
 
 export default function LoginPage() {
@@ -309,7 +308,7 @@ export default function LoginPage() {
                       <Label htmlFor="signup-name">{t('login.fullName')}</Label>
                       <div className="relative">
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input id="signup-name" type="text" placeholder={t('ph.firstName')} className="pl-10" value={signUpName} onChange={(e) => setSignUpName(e.target.value)} required />
+                        <Input id="signup-name" type="text" placeholder={t('ph.fullName')} className="pl-10" value={signUpName} onChange={(e) => setSignUpName(e.target.value)} required />
                       </div>
                     </div>
                     <div className="space-y-2">

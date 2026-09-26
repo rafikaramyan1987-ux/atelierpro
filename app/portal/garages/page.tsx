@@ -14,7 +14,6 @@ import { type Garage, type Vehicle, type GarageReview } from '@/lib/types/databa
 import { MapPin, Phone, Mail, Search, Loader2, Wrench, CalendarClock, Star, Navigation, Info, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { FieldHint } from '@/components/ui/field-hint';
 
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;

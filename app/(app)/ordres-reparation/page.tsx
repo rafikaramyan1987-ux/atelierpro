@@ -41,7 +41,6 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/auth-context';
-import { FieldHint } from '@/components/ui/field-hint';
 import {
   formatCHF,
   calculateVAT,
@@ -606,7 +605,7 @@ export default function RepairOrdersPage() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium">{t('or.selectDevis')}</label>
                     <Select value={selectedDevisId} onValueChange={setSelectedDevisId}>
-                      <SelectTrigger placeholder={t('ph.select')}>
+                      <SelectTrigger>
                         <SelectValue placeholder={t('or.selectDevis')} />
                       </SelectTrigger>
                       <SelectContent>
@@ -621,7 +620,7 @@ export default function RepairOrdersPage() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium">{t('or.assignMechanic')}</label>
                     <Select value={selectedMechanicId} onValueChange={setSelectedMechanicId}>
-                      <SelectTrigger placeholder={t('ph.select')}>
+                      <SelectTrigger>
                         <SelectValue placeholder={t('or.assignMechanic')} />
                       </SelectTrigger>
                       <SelectContent>
@@ -663,7 +662,7 @@ export default function RepairOrdersPage() {
                           }
                         }
                       }}>
-                        <SelectTrigger placeholder={t('ph.select')}>
+                        <SelectTrigger>
                           <SelectValue placeholder={t('cannedTasks.pickPlaceholder')} />
                         </SelectTrigger>
                         <SelectContent>
@@ -693,7 +692,7 @@ export default function RepairOrdersPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">{t('or.selectClient')}</label>
                 <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-                  <SelectTrigger placeholder={t('ph.selectClient')}>
+                  <SelectTrigger>
                     <SelectValue placeholder={t('or.selectClient')} />
                   </SelectTrigger>
                   <SelectContent>
@@ -709,7 +708,7 @@ export default function RepairOrdersPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">{t('or.selectVehicle')}</label>
                 <Select value={selectedVehicleId} onValueChange={setSelectedVehicleId} disabled={!selectedClientId}>
-                  <SelectTrigger placeholder={t('ph.selectVehicle')}>
+                  <SelectTrigger>
                     <SelectValue placeholder={t('or.selectVehicle')} />
                   </SelectTrigger>
                   <SelectContent>
@@ -725,7 +724,7 @@ export default function RepairOrdersPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">{t('or.assignMechanic')}</label>
                 <Select value={selectedMechanicId} onValueChange={setSelectedMechanicId}>
-                  <SelectTrigger placeholder={t('ph.select')}>
+                  <SelectTrigger>
                     <SelectValue placeholder={t('or.assignMechanic')} />
                   </SelectTrigger>
                   <SelectContent>
@@ -814,7 +813,7 @@ export default function RepairOrdersPage() {
             <div className="space-y-2">
               <label className="text-sm font-medium">{t('or.payerType')}</label>
               <Select value={payerType} onValueChange={(v: any) => setPayerType(v)}>
-                <SelectTrigger placeholder={t('ph.select')}>
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -994,7 +993,7 @@ export default function RepairOrdersPage() {
                     return (
                       <div className="space-y-2">
                         <Select value={selectedLoanerId} onValueChange={setSelectedLoanerId}>
-                          <SelectTrigger placeholder={t('ph.select')}><SelectValue placeholder={t('loaner.selectLoaner')} /></SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder={t('loaner.selectLoaner')} /></SelectTrigger>
                           <SelectContent>
                             {loanerVehicles.map((lv) => (
                               <SelectItem key={lv.id} value={lv.id}>{lv.make} {lv.model} — {lv.license_plate}</SelectItem>

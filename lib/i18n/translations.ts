@@ -323,6 +323,13 @@ export const translations: Record<Locale, TranslationDict> = {
     'hint.hourlyRate': 'Utilisé par défaut pour les lignes de main d\'œuvre des devis et factures.',
     'hint.laborLine': 'Indiquez les heures (ex. 2.5), pas une quantité de pièces.',
     'hint.plate': 'Format suisse, ex. VD 123 456.',
+    'ph.typeApproval': 'Ex. : 1AB123',
+    'ph.fullName': 'Ex. : Marc Dupont',
+    'ph.notesClient': 'Ex. : Client fidèle, préfère être appelé le matin',
+    'ph.minStock': 'Ex. : 5',
+    'ph.intervalMonths': 'Ex. : 12',
+    'ph.intervalKm': 'Ex. : 15000',
+    'ph.secondaryPayerAmount': 'Ex. : 0.00',
 
     // ── Parts orders page ──
     'partsOrders.title': 'Commandes de pièces',
@@ -1541,6 +1548,13 @@ export const translations: Record<Locale, TranslationDict> = {
     'hint.hourlyRate': 'Standardmässig für Arbeitslohnposten in Offerten und Rechnungen verwendet.',
     'hint.laborLine': 'Geben Sie die Stunden an (z.B. 2.5), nicht eine Stückzahl.',
     'hint.plate': 'Schweizer Format, z.B. VD 123 456.',
+    'ph.typeApproval': 'Bsp. : 1AB123',
+    'ph.fullName': 'Bsp. : Marc Dupont',
+    'ph.notesClient': 'Bsp. : Stammkunde, morgens anrufen',
+    'ph.minStock': 'Bsp. : 5',
+    'ph.intervalMonths': 'Bsp. : 12',
+    'ph.intervalKm': 'Bsp. : 15000',
+    'ph.secondaryPayerAmount': 'Bsp. : 0.00',
 
     // ── Parts orders page ──
     'partsOrders.title': 'Teilebestellungen',
@@ -2732,6 +2746,13 @@ export const translations: Record<Locale, TranslationDict> = {
     'hint.hourlyRate': 'Usato per default per le righe di manodopera di preventivi e fatture.',
     'hint.laborLine': 'Indica le ore (es. 2.5), non una quantità di pezzi.',
     'hint.plate': 'Formato svizzero, es. VD 123 456.',
+    'ph.typeApproval': 'Es. : 1AB123',
+    'ph.fullName': 'Es. : Marco Dupont',
+    'ph.notesClient': 'Es. : Cliente fedele, preferisce chiamate al mattino',
+    'ph.minStock': 'Es. : 5',
+    'ph.intervalMonths': 'Es. : 12',
+    'ph.intervalKm': 'Es. : 15000',
+    'ph.secondaryPayerAmount': 'Es. : 0.00',
 
     // ── Parts orders page ──
     'partsOrders.title': 'Ordini ricambi',
@@ -3923,6 +3944,13 @@ export const translations: Record<Locale, TranslationDict> = {
     'hint.hourlyRate': 'Used by default for labour lines in quotes and invoices.',
     'hint.laborLine': 'Enter hours (e.g. 2.5), not a parts quantity.',
     'hint.plate': 'Swiss format, e.g. VD 123 456.',
+    'ph.typeApproval': 'E.g. : 1AB123',
+    'ph.fullName': 'E.g. : Mark Dupont',
+    'ph.notesClient': 'E.g. : Loyal client, prefers morning calls',
+    'ph.minStock': 'E.g. : 5',
+    'ph.intervalMonths': 'E.g. : 12',
+    'ph.intervalKm': 'E.g. : 15000',
+    'ph.secondaryPayerAmount': 'E.g. : 0.00',
 
     // ── Parts orders page ──
     'partsOrders.title': 'Parts orders',
@@ -5114,6 +5142,13 @@ export const translations: Record<Locale, TranslationDict> = {
     'hint.hourlyRate': 'Përdoret si parazgjedhje për rreshtat e punës së dorës në oferta dhe fatura.',
     'hint.laborLine': 'Vendos orët (psh. 2.5), jo sasinë e pjesëve.',
     'hint.plate': 'Format zviceran, psh. VD 123 456.',
+    'ph.typeApproval': 'Msh. : 1AB123',
+    'ph.fullName': 'Msh. : Mark Dupont',
+    'ph.notesClient': 'Msh. : Klient besnik, preferon thirrje në mëngjes',
+    'ph.minStock': 'Msh. : 5',
+    'ph.intervalMonths': 'Msh. : 12',
+    'ph.intervalKm': 'Msh. : 15000',
+    'ph.secondaryPayerAmount': 'Msh. : 0.00',
 
     // ── Parts orders page ──
     'partsOrders.title': 'Porosi pjesësh',

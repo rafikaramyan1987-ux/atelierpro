@@ -33,7 +33,6 @@ import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 import type { Garage } from '@/lib/types/database';
 import { localDateStr, formatQty } from '@/lib/utils';
-import { FieldHint } from '@/components/ui/field-hint';
 
 export default function InvoiceDetailPage() {
   const params = useParams();
@@ -248,7 +247,7 @@ export default function InvoiceDetailPage() {
                 value={invoice.payment_method ?? 'none'}
                 onValueChange={(v) => updatePaymentMethod(v === 'none' ? 'qr_bill' : v as PaymentMethod)}
               >
-                <SelectTrigger placeholder={t('ph.select')}>
+                <SelectTrigger>
                   <SelectValue placeholder={t('invDetail.noPaymentMethod')} />
                 </SelectTrigger>
                 <SelectContent>

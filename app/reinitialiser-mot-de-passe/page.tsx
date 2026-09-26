@@ -10,7 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Lock, Loader2, AlertCircle } from 'lucide-react';
-import { FieldHint } from '@/components/ui/field-hint';
 import { toast } from 'sonner';
 
 export default function ResetPasswordPage() {

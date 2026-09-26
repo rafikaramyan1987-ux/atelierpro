@@ -36,7 +36,6 @@ import { formatCHF, type Part } from '@/lib/types/database';
 import { Plus, Search, Pencil, Trash2, Package, AlertTriangle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
-import { FieldHint } from '@/components/ui/field-hint';
 
 export default function StockPage() {
   const [parts, setParts] = useState<Part[]>([]);
@@ -235,7 +234,7 @@ export default function StockPage() {
           />
         </div>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-full sm:w-48" placeholder={t('ph.select')}>
+          <SelectTrigger className="w-full sm:w-48">
             <SelectValue placeholder={t('stock.category')} />
           </SelectTrigger>
           <SelectContent>
@@ -374,7 +373,7 @@ export default function StockPage() {
               <div className="space-y-2">
                 <Label htmlFor="category">{t('stock.category')}</Label>
                 <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
-                  <SelectTrigger id="category" placeholder={t('ph.select')}>
+                  <SelectTrigger id="category">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -414,7 +413,7 @@ export default function StockPage() {
                 <Input
                   id="min_stock_threshold"
                   type="number"
-                  placeholder="5"
+                  placeholder={t('ph.minStock')}
                   value={form.min_stock_threshold}
                   onChange={(e) => setForm({ ...form, min_stock_threshold: e.target.value })}
                 />

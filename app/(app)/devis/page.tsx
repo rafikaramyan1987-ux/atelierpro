@@ -617,7 +617,7 @@ export default function DevisPage() {
                 }
               }}
             >
-              <SelectTrigger className="flex-1" placeholder={t('ph.select')}>
+              <SelectTrigger className="flex-1">
                 <SelectValue placeholder={t('invNew.selectTask')} />
               </SelectTrigger>
               <SelectContent>
@@ -879,7 +879,7 @@ export default function DevisPage() {
               <div className="space-y-2">
                 <Label>{t('devisPage.selectClient')}</Label>
                 <Select value={clientId} onValueChange={setClientId}>
-                  <SelectTrigger placeholder={t('ph.selectClient')}><SelectValue placeholder={t('devisPage.selectClient')} /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t('devisPage.selectClient')} /></SelectTrigger>
                   <SelectContent>
                     {clients.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
@@ -892,7 +892,7 @@ export default function DevisPage() {
               <div className="space-y-2">
                 <Label>{t('devisPage.selectVehicle')}</Label>
                 <Select value={vehicleId} onValueChange={setVehicleId} disabled={!clientId}>
-                  <SelectTrigger placeholder={t('ph.selectVehicle')}><SelectValue placeholder={t('devisPage.selectVehicle')} /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t('devisPage.selectVehicle')} /></SelectTrigger>
                   <SelectContent>
                     {vehicles.map((v) => (
                       <SelectItem key={v.id} value={v.id}>

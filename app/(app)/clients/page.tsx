@@ -416,7 +416,7 @@ export default function ClientsPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="c-notes">{t('clients.notes')}</Label>
-              <Textarea id="c-notes" placeholder={t('ph.notes')} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+              <Textarea id="c-notes" placeholder={t('ph.notesClient')} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>{t('common.cancel')}</Button>
@@ -469,7 +469,7 @@ export default function ClientsPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="v-notes">{t('clients.notes')}</Label>
-              <Textarea id="v-notes" placeholder={t('ph.notes')} value={vehicleForm.notes} onChange={(e) => setVehicleForm({ ...vehicleForm, notes: e.target.value })} />
+              <Textarea id="v-notes" placeholder={t('ph.notesClient')} value={vehicleForm.notes} onChange={(e) => setVehicleForm({ ...vehicleForm, notes: e.target.value })} />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setVehicleDialogOpen(false)}>{t('common.cancel')}</Button>

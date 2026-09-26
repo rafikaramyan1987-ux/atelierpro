@@ -274,7 +274,7 @@ export default function NewInvoicePage() {
             <div className="space-y-2">
               <Label>{t('invNew.client')}</Label>
               <Select value={clientId} onValueChange={setClientId}>
-                <SelectTrigger placeholder={t('ph.selectClient')}>
+                <SelectTrigger>
                   <SelectValue placeholder={t('invNew.selectClient')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -292,7 +292,7 @@ export default function NewInvoicePage() {
             <div className="space-y-2">
               <Label>{t('invoices.vehicle')} ({t('common.optional')})</Label>
               <Select value={vehicleId} onValueChange={setVehicleId} disabled={!clientId}>
-                <SelectTrigger placeholder={t('ph.selectVehicle')}>
+                <SelectTrigger>
                   <SelectValue placeholder={t('invNew.selectVehicle')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -336,7 +336,7 @@ export default function NewInvoicePage() {
                     value={item.item_type}
                     onValueChange={(v) => updateItem(item.id, 'item_type', v)}
                   >
-                    <SelectTrigger className="w-36 shrink-0" placeholder={t('ph.select')}><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-36 shrink-0"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="piece">{t('items.piece')}</SelectItem>
                       <SelectItem value="main_oeuvre">{t('items.labor')}</SelectItem>
@@ -350,7 +350,7 @@ export default function NewInvoicePage() {
                       else updateItem(item.id, 'part_id', v);
                     }}
                   >
-                    <SelectTrigger className="flex-1" placeholder={t('ph.select')}>
+                    <SelectTrigger className="flex-1">
                       <SelectValue placeholder={t('invNew.selectTask')} />
                     </SelectTrigger>
                     <SelectContent>
@@ -427,7 +427,7 @@ export default function NewInvoicePage() {
             <div className="space-y-2">
               <Label>{t('inv.payerType')} *</Label>
               <Select value={payerType} onValueChange={(v: any) => setPayerType(v)}>
-                <SelectTrigger placeholder={t('ph.select')}><SelectValue /></SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="client">{t('inv.payerClient')}</SelectItem>
                   <SelectItem value="assurance">{t('inv.payerAssurance')}</SelectItem>
@@ -438,7 +438,7 @@ export default function NewInvoicePage() {
             <div className="space-y-2">
               <Label>{t('inv.secondaryPayer')}</Label>
               <Select value={secondaryPayerType} onValueChange={(v: any) => setSecondaryPayerType(v)}>
-                <SelectTrigger placeholder={t('ph.select')}><SelectValue /></SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">{t('inv.none')}</SelectItem>
                   <SelectItem value="client">{t('inv.payerClient')}</SelectItem>
@@ -451,7 +451,7 @@ export default function NewInvoicePage() {
           {secondaryPayerType !== 'none' && (
             <div className="space-y-2 max-w-xs">
               <Label>{t('inv.secondaryPayerAmount')}</Label>
-              <Input type="number" step="0.05" placeholder="0.00" value={secondaryPayerAmount} onChange={(e) => setSecondaryPayerAmount(e.target.value)} />
+              <Input type="number" step="0.05" placeholder={t('ph.secondaryPayerAmount')} value={secondaryPayerAmount} onChange={(e) => setSecondaryPayerAmount(e.target.value)} />
             </div>
           )}
         </CardContent>

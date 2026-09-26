@@ -31,7 +31,6 @@ import { FileSearch, Plus, Loader2, CheckCircle2, XCircle, Clock, FileText, Pen,
 import { toast } from 'sonner';
 import { sendEmail, newDevisEmail } from '@/lib/email';
 import { SignaturePad } from '@/components/signature-pad';
-import { FieldHint } from '@/components/ui/field-hint';
 import { formatQty } from '@/lib/utils';
 
 export default function ClientDevisPage() {
@@ -342,7 +341,7 @@ export default function ClientDevisPage() {
               <Label htmlFor="devis-garage">{t('devis.garage')} *</Label>
               {garages.length > 0 ? (
                 <Select value={form.garage_id || 'none'} onValueChange={(v) => setForm({ ...form, garage_id: v === 'none' ? '' : v })}>
-                  <SelectTrigger id="devis-garage" placeholder={t('ph.select')}>
+                  <SelectTrigger id="devis-garage">
                     <SelectValue placeholder={t('devis.selectGarage')} />
                   </SelectTrigger>
                   <SelectContent>
@@ -358,7 +357,7 @@ export default function ClientDevisPage() {
             <div className="space-y-2">
               <Label htmlFor="devis-vehicle">{t('devis.vehicle')}</Label>
               <Select value={form.vehicle_id || 'none'} onValueChange={(v) => setForm({ ...form, vehicle_id: v === 'none' ? '' : v })}>
-                <SelectTrigger id="devis-vehicle" placeholder={t('ph.selectVehicle')}>
+                <SelectTrigger id="devis-vehicle">
                   <SelectValue placeholder={t('devis.vehicle')} />
                 </SelectTrigger>
                 <SelectContent>

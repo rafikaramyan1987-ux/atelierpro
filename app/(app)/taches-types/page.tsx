@@ -22,7 +22,6 @@ import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 import { useAuth } from '@/lib/auth-context';
 import { formatCHF, type CannedTask, type ReminderType } from '@/lib/types/database';
-import { FieldHint } from '@/components/ui/field-hint';
 
 const MONTHS = [
   { value: 1, key: 'month.jan' }, { value: 2, key: 'month.feb' }, { value: 3, key: 'month.mar' },
@@ -310,11 +309,11 @@ export default function CannedTasksPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label>{t('cannedTasks.intervalMonths')}</Label>
-                    <Input type="number" min="1" value={intervalMonths} onChange={(e) => setIntervalMonths(e.target.value)} placeholder="12" />
+                    <Input type="number" min="1" value={intervalMonths} onChange={(e) => setIntervalMonths(e.target.value)} placeholder={t('ph.intervalMonths')} />
                   </div>
                   <div className="space-y-2">
                     <Label>{t('cannedTasks.intervalKm')}</Label>
-                    <Input type="number" min="100" value={intervalKm} onChange={(e) => setIntervalKm(e.target.value)} placeholder="15000" />
+                    <Input type="number" min="100" value={intervalKm} onChange={(e) => setIntervalKm(e.target.value)} placeholder={t('ph.intervalKm')} />
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">{t('cannedTasks.intervalHint')}</p>

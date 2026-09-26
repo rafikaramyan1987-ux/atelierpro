@@ -287,7 +287,7 @@ export default function ClientVehiclesPage() {
               <div className="space-y-2">
                 <Label htmlFor="v-brand">{t('vehicles.brand')} *</Label>
                 <Select value={form.brand || 'none'} onValueChange={handleBrandChange}>
-                  <SelectTrigger id="v-brand" placeholder={t('ph.select')}>
+                  <SelectTrigger id="v-brand">
                     <SelectValue placeholder={t('vehicles.selectBrand')} />
                   </SelectTrigger>
                   <SelectContent>
@@ -313,7 +313,7 @@ export default function ClientVehiclesPage() {
                 </div>
                 {form.brand && !useManualModel && availableModels.length > 0 ? (
                   <Select value={form.model || 'none'} onValueChange={(v) => setForm({ ...form, model: v })}>
-                    <SelectTrigger id="v-model" placeholder={t('ph.select')}>
+                    <SelectTrigger id="v-model">
                       <SelectValue placeholder={t('vehicles.selectModel')} />
                     </SelectTrigger>
                     <SelectContent>
@@ -354,7 +354,7 @@ export default function ClientVehiclesPage() {
               </div>
               <Input
                 id="v-reception"
-                placeholder={t('ph.partRef')}
+                placeholder={t('ph.typeApproval')}
                 value={form.type_approval_number}
                 onChange={(e) => setForm({ ...form, type_approval_number: e.target.value })}
               />
