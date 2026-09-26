@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { formatCHF, calculateVAT, VAT_RATE, type Client, type Vehicle, type Part, type PayerType, type CannedTask, type ItemType } from '@/lib/types/database';
+import { formatCHF, calculateVAT, VAT_RATE, type Client, type Vehicle, type Part, type PayerType, type CannedTask, type ItemType, type Garage } from '@/lib/types/database';
 import { Plus, Trash2, Loader2, ArrowLeft, Save, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
@@ -45,7 +45,7 @@ export default function NewInvoicePage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [parts, setParts] = useState<Part[]>([]);
   const [cannedTasks, setCannedTasks] = useState<CannedTask[]>([]);
-  const [garage, setGarage] = useState<{ hourly_rate: number } | null>(null);
+  const [garage, setGarage] = useState<{ hourly_rate: number; vat_rate: number; vat_liable: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const { t } = useI18n();
@@ -93,12 +93,12 @@ export default function NewInvoicePage() {
         supabase.from('clients').select('*').order('last_name'),
         supabase.from('parts').select('*').order('name'),
         supabase.from('canned_tasks').select('*').order('name'),
-        supabase.from('garages').select('hourly_rate').eq('id', profile?.garage_id ?? '').maybeSingle(),
+        supabase.from('garages').select('hourly_rate, vat_rate, vat_liable').eq('id', profile?.garage_id ?? '').maybeSingle(),
       ]);
       setClients(clientsRes.data as Client[] ?? []);
       setParts(partsRes.data as Part[] ?? []);
       setCannedTasks(tasksRes.data as CannedTask[] ?? []);
-      setGarage(garageRes.data as { hourly_rate: number } | null);
+      setGarage(garageRes.data as { hourly_rate: number; vat_rate: number; vat_liable: boolean } | null);
       setLoading(false);
     }
     fetchData();
@@ -160,7 +160,8 @@ export default function NewInvoicePage() {
   const subtotal = items.reduce((sum, item) => {
     return sum + (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0);
   }, 0);
-  const { vat, total } = calculateVAT(subtotal);
+  const effectiveVatRate = garage?.vat_liable ? (garage?.vat_rate ?? VAT_RATE) : 0;
+  const { vat, total } = calculateVAT(subtotal, effectiveVatRate);
 
   async function handleSubmit(status: 'brouillon' | 'envoyee') {
     if (!clientId) {
@@ -189,7 +190,7 @@ export default function NewInvoicePage() {
       garage_id: profile?.garage_id ?? null,
       status: actualStatus,
       subtotal: Math.round(subtotal * 100) / 100,
-      vat_rate: VAT_RATE,
+      vat_rate: effectiveVatRate,
       vat_amount: vat,
       total,
       issue_date: issueDate,
@@ -487,10 +488,12 @@ export default function NewInvoicePage() {
               <span className="text-muted-foreground">{t('invoices.subtotal')}</span>
               <span className="font-medium">{formatCHF(subtotal)}</span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">{t('invoices.vat')} ({VAT_RATE}%)</span>
-              <span className="font-medium">{formatCHF(vat)}</span>
-            </div>
+            {effectiveVatRate > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{t('invoices.vat')} ({effectiveVatRate}%)</span>
+                <span className="font-medium">{formatCHF(vat)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-lg pt-2 border-t">
               <span className="font-bold">{t('invoices.total')}</span>
               <span className="font-bold text-primary">{formatCHF(total)}</span>

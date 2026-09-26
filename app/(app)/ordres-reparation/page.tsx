@@ -96,6 +96,8 @@ export default function RepairOrdersPage() {
   const [loanerEndDate, setLoanerEndDate] = useState(localDateStrPlusDays(3));
   const [cannedTasks, setCannedTasks] = useState<CannedTask[]>([]);
   const [hourlyRate, setHourlyRate] = useState(120);
+  const [vatRate, setVatRate] = useState(8.1);
+  const [vatLiable, setVatLiable] = useState(true);
   const [extraItems, setExtraItems] = useState<{ description: string; quantity: number; unit_price: number; item_type: ItemType }[]>([]);
   const [devisItems, setDevisItems] = useState<DevisItem[]>([]);
 
@@ -108,7 +110,7 @@ export default function RepairOrdersPage() {
       supabase.from('loaner_vehicles').select('*').eq('status', 'available').order('make'),
       supabase.from('loaner_assignments').select('*, loaner_vehicle:loaner_vehicles(*), client:clients(*)').eq('status', 'active'),
       supabase.from('canned_tasks').select('*').order('name', { ascending: true }),
-      supabase.from('garages').select('hourly_rate').eq('id', profile?.garage_id ?? '').maybeSingle(),
+      supabase.from('garages').select('hourly_rate, vat_rate, vat_liable').eq('id', profile?.garage_id ?? '').maybeSingle(),
     ]);
     const orData = orRes.data as any ?? [];
     const usedSrIds = new Set(orData.map((o: any) => o.service_request_id).filter(Boolean));
@@ -120,6 +122,8 @@ export default function RepairOrdersPage() {
     setLoanerAssignments(laRes.data as LoanerAssignment[] ?? []);
     setCannedTasks(tasksRes.data as CannedTask[] ?? []);
     setHourlyRate((garageRes.data as any)?.hourly_rate ?? 120);
+    setVatRate((garageRes.data as any)?.vat_rate ?? 8.1);
+    setVatLiable((garageRes.data as any)?.vat_liable ?? true);
     setLoading(false);
   }, []);
 
@@ -309,7 +313,8 @@ export default function RepairOrdersPage() {
 
     const items = convertDialog.repair_order_items ?? [];
     const subtotal = items.reduce((sum, it) => sum + it.line_total, 0);
-    const { vat, total } = calculateVAT(subtotal);
+    const effectiveVatRate = vatLiable ? vatRate : 0;
+    const { vat, total } = calculateVAT(subtotal, effectiveVatRate);
 
     const { data: invoiceNumber } = await supabase.rpc('generate_invoice_number', {
       p_garage_id: profile?.garage_id ?? null,
@@ -328,7 +333,7 @@ export default function RepairOrdersPage() {
       garage_id: profile?.garage_id ?? null,
       status: 'brouillon',
       subtotal: Math.round(subtotal * 100) / 100,
-      vat_rate: VAT_RATE,
+      vat_rate: effectiveVatRate,
       vat_amount: vat,
       total,
       issue_date: localDateStr(),

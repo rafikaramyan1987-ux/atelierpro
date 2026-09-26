@@ -48,6 +48,8 @@ export default function MonGaragePage() {
   const [isPublished, setIsPublished] = useState(false);
   const [iban, setIban] = useState('');
   const [vatNumber, setVatNumber] = useState('');
+  const [vatLiable, setVatLiable] = useState(true);
+  const [vatRate, setVatRate] = useState('8.1');
   const [hourlyRate, setHourlyRate] = useState('120');
   const [ibanError, setIbanError] = useState('');
   const [seedingTasks, setSeedingTasks] = useState(false);
@@ -78,6 +80,8 @@ export default function MonGaragePage() {
         setIsPublished((data as any).is_published ?? false);
         setIban((data as any).iban ?? '');
         setVatNumber((data as any).vat_number ?? '');
+        setVatLiable((data as any).vat_liable ?? true);
+        setVatRate(String((data as any).vat_rate ?? 8.1));
         setHourlyRate(String((data as any).hourly_rate ?? 120));
         if (!data.address || !data.city) {
           setJustCreated(true);
@@ -131,6 +135,8 @@ export default function MonGaragePage() {
         is_published: isPublished,
         iban: normalizedIban || null,
         vat_number: vatNumber || null,
+        vat_liable: vatLiable,
+        vat_rate: parseFloat(vatRate) || 8.1,
         hourly_rate: parseFloat(hourlyRate) || 120,
       })
       .eq('id', garage.id);
@@ -139,7 +145,7 @@ export default function MonGaragePage() {
       toast.error(t('garageProfile.toast.error'), { description: error.message });
     } else {
       toast.success(t('garageProfile.toast.saved'));
-      setGarage({ ...garage, name, description, address, city, postal_code: postalCode, phone, email, logo_url: logoUrl, services_offered: services, gardiennage_enabled: gardiennageEnabled, is_published: isPublished, iban: normalizeIban(iban) || null, vat_number: vatNumber || null, hourly_rate: parseFloat(hourlyRate) || 120 } as Garage);
+      setGarage({ ...garage, name, description, address, city, postal_code: postalCode, phone, email, logo_url: logoUrl, services_offered: services, gardiennage_enabled: gardiennageEnabled, is_published: isPublished, iban: normalizeIban(iban) || null, vat_number: vatNumber || null, vat_liable: vatLiable, vat_rate: parseFloat(vatRate) || 8.1, hourly_rate: parseFloat(hourlyRate) || 120 } as Garage);
       if (justCreated) {
         setJustCreated(false);
         router.push('/dashboard');
@@ -275,6 +281,25 @@ export default function MonGaragePage() {
                   <Input value={vatNumber} onChange={(e) => setVatNumber(e.target.value)} placeholder={t('ph.garageVat')} />
                   <FieldHint>{t('hint.vatNumber')}</FieldHint>
                 </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">{t('garageProfile.vatLiable')}</label>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={vatLiable}
+                    onClick={() => setVatLiable(!vatLiable)}
+                    className={cn('relative inline-flex h-6 w-11 items-center rounded-full transition-colors', vatLiable ? 'bg-primary' : 'bg-muted')}
+                  >
+                    <span className={cn('inline-block h-4 w-4 transform rounded-full bg-white transition-transform', vatLiable ? 'translate-x-6' : 'translate-x-1')} />
+                  </button>
+                </div>
+                {vatLiable && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">{t('garageProfile.vatRate')}</label>
+                    <Input type="number" step="0.1" value={vatRate} onChange={(e) => setVatRate(e.target.value)} placeholder="Ex. : 8.1" />
+                    <FieldHint>{t('hint.vatRate')}</FieldHint>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t('garageProfile.hourlyRate')}</label>
                   <Input type="number" min="0" step="0.5" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} placeholder={t('ph.garageHourlyRate')} />

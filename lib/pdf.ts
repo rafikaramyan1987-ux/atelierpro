@@ -229,8 +229,10 @@ export async function generateInvoicePDF(
   doc.text('Sous-total:', totalsX, totalsY);
   doc.text(pdfAmount(invoice.subtotal), pageWidth - 14, totalsY, { align: 'right' });
 
-  doc.text(`TVA (${pdfRate(invoice.vat_rate)}%):`, totalsX, totalsY + 7);
-  doc.text(pdfAmount(invoice.vat_amount), pageWidth - 14, totalsY + 7, { align: 'right' });
+  if (Number(invoice.vat_rate) !== 0) {
+    doc.text(`TVA (${pdfRate(invoice.vat_rate)}%):`, totalsX, totalsY + 7);
+    doc.text(pdfAmount(invoice.vat_amount), pageWidth - 14, totalsY + 7, { align: 'right' });
+  }
 
   doc.setFillColor(13, 14, 20);
   doc.roundedRect(pageWidth - 96, totalsY + 10, 86, 12, 2, 2, 'F');
@@ -383,6 +385,7 @@ export async function generateDevisPDF(
   vehicle: Vehicle | null,
   items: DevisItem[],
   garage: GaragePdfInfo | null,
+  vatRate: number = VAT_RATE,
 ) {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -479,15 +482,17 @@ export async function generateDevisPDF(
   const totalsX = pageWidth - 80;
 
   const subtotal = items.reduce((sum, item) => sum + Number(item.line_total), 0);
-  const { vat, total } = calculateVAT(subtotal);
+  const { vat, total } = calculateVAT(subtotal, vatRate);
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.text('Sous-total:', totalsX, totalsY);
   doc.text(pdfAmount(subtotal), pageWidth - 14, totalsY, { align: 'right' });
 
-  doc.text(`TVA (${pdfRate(VAT_RATE)}%):`, totalsX, totalsY + 7);
-  doc.text(pdfAmount(vat), pageWidth - 14, totalsY + 7, { align: 'right' });
+  if (vatRate !== 0) {
+    doc.text(`TVA (${pdfRate(vatRate)}%):`, totalsX, totalsY + 7);
+    doc.text(pdfAmount(vat), pageWidth - 14, totalsY + 7, { align: 'right' });
+  }
 
   doc.setFillColor(13, 14, 20);
   doc.roundedRect(pageWidth - 96, totalsY + 10, 86, 12, 2, 2, 'F');

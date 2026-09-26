@@ -252,12 +252,13 @@ export default function DevisPage() {
   const subtotal = items.reduce((sum, item) => {
     return sum + (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0);
   }, 0);
-  const { vat, total } = calculateVAT(subtotal);
+  const effectiveVatRate = garage?.vat_liable ? (garage?.vat_rate ?? VAT_RATE) : 0;
+  const { vat, total } = calculateVAT(subtotal, effectiveVatRate);
 
   const editSubtotal = editItems.reduce((sum, item) => {
     return sum + (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0);
   }, 0);
-  const editCalc = calculateVAT(editSubtotal);
+  const editCalc = calculateVAT(editSubtotal, effectiveVatRate);
 
   function resetForm() {
     setClientId('');
@@ -474,7 +475,7 @@ export default function DevisPage() {
       }
       const client = devis.client ?? null;
       const vehicle = devis.vehicle ?? null;
-      await generateDevisPDF(devis, client, vehicle, itemsData, garageToPdfInfo(garage));
+      await generateDevisPDF(devis, client, vehicle, itemsData, garageToPdfInfo(garage), effectiveVatRate);
     } catch (err: any) {
       toast.error('PDF error', { description: err.message });
     }
@@ -505,7 +506,7 @@ export default function DevisPage() {
     const laborSub = laborItems.reduce((s, i) => s + Number(i.line_total), 0);
     const partSub = partItems.reduce((s, i) => s + Number(i.line_total), 0);
     const dSubtotal = laborSub + partSub;
-    const dCalc = calculateVAT(dSubtotal);
+    const dCalc = calculateVAT(dSubtotal, effectiveVatRate);
 
     const renderRow = (item: DevisItem) => {
       const isLabor = (item.item_type ?? 'piece') === 'main_oeuvre';
@@ -566,10 +567,12 @@ export default function DevisPage() {
             <span className="text-muted-foreground">{t('devisPage.subtotal')}</span>
             <span>{formatCHF(dSubtotal)}</span>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">{t('devisPage.vat')}</span>
-            <span>{formatCHF(dCalc.vat)}</span>
-          </div>
+          {effectiveVatRate > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">{t('devisPage.vat')}</span>
+              <span>{formatCHF(dCalc.vat)}</span>
+            </div>
+          )}
           <div className="flex justify-between font-bold">
             <span>{t('devisPage.total')}</span>
             <span>{formatCHF(dCalc.total)}</span>
@@ -799,7 +802,7 @@ export default function DevisPage() {
                 const hasPortal = devis.client?.auth_user_id != null;
                 const devisItems = devis.devis_items ?? [];
                 const dSubtotal = devisItems.reduce((s, i) => s + Number(i.line_total), 0);
-                const dCalc = calculateVAT(dSubtotal);
+                const dCalc = calculateVAT(dSubtotal, effectiveVatRate);
 
                 return (
                   <Card key={devis.id} className="border-border/60">
@@ -937,10 +940,12 @@ export default function DevisPage() {
                 <span className="text-muted-foreground">{t('devisPage.subtotal')}</span>
                 <span className="font-medium">{formatCHF(subtotal)}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{t('devisPage.vat')}</span>
-                <span className="font-medium">{formatCHF(vat)}</span>
-              </div>
+              {effectiveVatRate > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{t('devisPage.vat')}</span>
+                  <span className="font-medium">{formatCHF(vat)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-lg pt-2 border-t">
                 <span className="font-bold">{t('devisPage.total')}</span>
                 <span className="font-bold text-primary">{formatCHF(total)}</span>
@@ -983,10 +988,12 @@ export default function DevisPage() {
                 <span className="text-muted-foreground">{t('devisPage.subtotal')}</span>
                 <span className="font-medium">{formatCHF(editSubtotal)}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{t('devisPage.vat')}</span>
-                <span className="font-medium">{formatCHF(editCalc.vat)}</span>
-              </div>
+              {effectiveVatRate > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{t('devisPage.vat')}</span>
+                  <span className="font-medium">{formatCHF(editCalc.vat)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-lg pt-2 border-t">
                 <span className="font-bold">{t('devisPage.total')}</span>
                 <span className="font-bold text-primary">{formatCHF(editCalc.total)}</span>

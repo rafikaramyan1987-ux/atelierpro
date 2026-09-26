@@ -247,6 +247,8 @@ export interface Garage {
   iban: string | null;
   vat_number: string | null;
   hourly_rate: number;
+  vat_rate: number;
+  vat_liable: boolean;
   created_at: string;
 }
 

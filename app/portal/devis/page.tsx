@@ -27,6 +27,7 @@ import {
   type ServiceRequest,
   type DevisItem,
 } from '@/lib/types/database';
+import { generateDevisPDF, garageToPdfInfo } from '@/lib/pdf';
 import { FileSearch, Plus, Loader2, CheckCircle2, XCircle, Clock, FileText, Pen, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { sendEmail, newDevisEmail } from '@/lib/email';
@@ -49,7 +50,7 @@ export default function ClientDevisPage() {
     garage_id: '',
   });
 
-  const [garages, setGarages] = useState<{ id: string; name: string }[]>([]);
+  const [garages, setGarages] = useState<{ id: string; name: string; vat_rate: number; vat_liable: boolean }[]>([]);
 
   const fetchData = useCallback(async () => {
     if (!profile?.client_id) return;
@@ -57,7 +58,7 @@ export default function ClientDevisPage() {
     const [vRes, rRes, gRes] = await Promise.all([
       supabase.from('vehicles').select('*').eq('client_id', profile.client_id).order('created_at', { ascending: false }),
       supabase.from('service_requests').select('*, vehicle:vehicles(*), devis_items(*)').eq('client_id', profile.client_id).order('created_at', { ascending: false }),
-      supabase.from('garages_public').select('id, name').order('name'),
+      supabase.from('garages_public').select('id, name, vat_rate, vat_liable').order('name'),
     ]);
     setVehicles(vRes.data as Vehicle[] ?? []);
     setRequests(rRes.data as any ?? []);
@@ -183,7 +184,9 @@ export default function ClientDevisPage() {
             const StatusIcon = sc.icon;
             const items = req.devis_items ?? [];
             const itemsSubtotal = items.reduce((sum, it) => sum + Number(it.line_total), 0);
-            const itemsVat = Math.round(itemsSubtotal * VAT_RATE) / 100;
+            const garage = garages.find((g) => g.id === req.garage_id);
+            const effectiveVatRate = garage ? (garage.vat_liable ? (garage.vat_rate ?? VAT_RATE) : 0) : VAT_RATE;
+            const itemsVat = Math.round(itemsSubtotal * effectiveVatRate) / 100;
             const itemsTotal = itemsSubtotal + itemsVat;
 
             return (
@@ -228,7 +231,7 @@ export default function ClientDevisPage() {
                               <span>{formatCHF(itemsSubtotal)}</span>
                             </div>
                             <div className="flex justify-between text-xs text-muted-foreground">
-                              <span>{t('invoices.vat')} ({VAT_RATE}%)</span>
+                              <span>{t('invoices.vat')} ({effectiveVatRate}%)</span>
                               <span>{formatCHF(itemsVat)}</span>
                             </div>
                             <div className="flex justify-between text-sm font-bold mt-1">
