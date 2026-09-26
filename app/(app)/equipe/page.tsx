@@ -208,11 +208,28 @@ export default function EquipePage() {
       toast.error(t('team.cannotDeleteSelf'));
       return;
     }
-    const { data: deleted, error } = await supabase.from('profiles').delete().eq('id', member.id).select('id');
-    if (error) {
-      toast.error(t('team.deleteError'));
-    } else if (!deleted || deleted.length === 0) {
-      toast.error(t('team.deleteError'));
+    const { error: fetchError } = await supabase.functions.invoke<{
+      success?: boolean;
+      error?: string;
+      detail?: string;
+    }>('manage-employee', {
+      body: {
+        action: 'delete',
+        target_user_id: member.id,
+      },
+    });
+    if (fetchError) {
+      const ctx = fetchError.context as Response | undefined;
+      let detail = fetchError.message;
+      try {
+        if (ctx) {
+          const body = await ctx.json() as { error?: string; detail?: string };
+          detail = body?.detail ?? body?.error ?? fetchError.message;
+        }
+      } catch {
+        // no JSON body
+      }
+      toast.error(t('team.deleteError'), { description: detail });
     } else {
       toast.success(t('team.deletedToast'));
       fetchMembers();

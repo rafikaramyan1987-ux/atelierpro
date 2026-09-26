@@ -80,7 +80,7 @@ export default function GaragesPage() {
       if (garageList.length > 0) {
         const garageIds = garageList.map((g) => g.id);
         const { data: reviewData } = await supabase
-          .from('garage_reviews')
+          .from('garage_reviews_public')
           .select('*')
           .in('garage_id', garageIds)
           .order('created_at', { ascending: false });

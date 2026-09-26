@@ -188,6 +188,66 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    if (action === "delete") {
+      const { target_user_id } = body;
+
+      if (!target_user_id) {
+        return jsonError(400, "missing field: target_user_id");
+      }
+      if (target_user_id === callerId) {
+        return jsonError(400, "cannot delete self");
+      }
+
+      const { data: targetProfile, error: targetError } = await adminClient
+        .from("profiles")
+        .select("role, garage_id, active")
+        .eq("id", target_user_id)
+        .maybeSingle();
+
+      if (targetError) {
+        return jsonError(500, "failed to fetch target profile", targetError.message);
+      }
+      if (!targetProfile) {
+        return jsonError(404, "target user not found");
+      }
+      if (targetProfile.garage_id !== callerProfile.garage_id) {
+        return jsonError(403, "target not in your garage");
+      }
+
+      if (targetProfile.role === "admin" && targetProfile.active !== false) {
+        const { count } = await adminClient
+          .from("profiles")
+          .select("id", { count: "exact", head: true })
+          .eq("garage_id", callerProfile.garage_id)
+          .eq("role", "admin")
+          .eq("active", true);
+
+        if (count !== null && count <= 1) {
+          return jsonError(400, "cannot delete last admin", "This garage must have at least one active admin");
+        }
+      }
+
+      const { error: deleteProfileError } = await adminClient
+        .from("profiles")
+        .delete()
+        .eq("id", target_user_id);
+
+      if (deleteProfileError) {
+        return jsonError(500, "failed to delete profile", deleteProfileError.message);
+      }
+
+      const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(target_user_id);
+
+      if (deleteAuthError) {
+        return jsonError(500, "failed to delete auth user", deleteAuthError.message);
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return jsonError(400, "invalid action", `Unknown action: ${action ?? "none"}`);
   } catch (err) {
     console.error("manage-employee unexpected error:", err);
