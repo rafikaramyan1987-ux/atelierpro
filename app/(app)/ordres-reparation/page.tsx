@@ -110,8 +110,11 @@ export default function RepairOrdersPage() {
       supabase.from('canned_tasks').select('*').order('name', { ascending: true }),
       supabase.from('garages').select('hourly_rate').eq('id', profile?.garage_id ?? '').maybeSingle(),
     ]);
-    setOrders(orRes.data as any ?? []);
-    setAcceptedDevis(devisRes.data as any ?? []);
+    const orData = orRes.data as any ?? [];
+    const usedSrIds = new Set(orData.map((o: any) => o.service_request_id).filter(Boolean));
+    const devisData = (devisRes.data as any ?? []).filter((d: any) => !usedSrIds.has(d.id));
+    setOrders(orData);
+    setAcceptedDevis(devisData);
     setMechanics(mechRes.data as Profile[] ?? []);
     setLoanerVehicles(lvRes.data as LoanerVehicle[] ?? []);
     setLoanerAssignments(laRes.data as LoanerAssignment[] ?? []);
@@ -293,6 +296,16 @@ export default function RepairOrdersPage() {
     }
 
     setSubmitting(true);
+
+    const { data: currentOR } = await supabase.from('repair_orders')
+      .select('invoice_id, status')
+      .eq('id', convertDialog.id)
+      .maybeSingle();
+    if (currentOR?.invoice_id || currentOR?.status === 'facture') {
+      toast.error(t('or.alreadyInvoiced'));
+      setSubmitting(false);
+      return;
+    }
 
     const items = convertDialog.repair_order_items ?? [];
     const subtotal = items.reduce((sum, it) => sum + it.line_total, 0);
