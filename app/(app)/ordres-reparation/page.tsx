@@ -57,6 +57,7 @@ import {
   type CannedTask,
   type DevisItem,
   type ItemType,
+  type Part,
 } from '@/lib/types/database';
 import { SignaturePad } from '@/components/signature-pad';
 import { OrPhotosSection } from '@/components/or-photos';
@@ -99,12 +100,13 @@ export default function RepairOrdersPage() {
   const [vatRate, setVatRate] = useState(8.1);
   const [vatLiable, setVatLiable] = useState(true);
   const effectiveVatRate = vatLiable ? vatRate : 0;
-  const [extraItems, setExtraItems] = useState<{ description: string; quantity: number; unit_price: number; item_type: ItemType }[]>([]);
+  const [extraItems, setExtraItems] = useState<{ description: string; quantity: number; unit_price: number; item_type: ItemType; part_id: string | null }[]>([]);
   const [devisItems, setDevisItems] = useState<DevisItem[]>([]);
+  const [parts, setParts] = useState<Part[]>([]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const [orRes, devisRes, mechRes, lvRes, laRes, tasksRes, garageRes] = await Promise.all([
+    const [orRes, devisRes, mechRes, lvRes, laRes, tasksRes, garageRes, partsRes] = await Promise.all([
       supabase.from('repair_orders').select('*, client:clients(*), vehicle:vehicles(*), assigned_mechanic:profiles!assigned_mechanic_id(*), repair_order_items(*), service_request:service_requests(*)').order('created_at', { ascending: false }),
       supabase.from('service_requests').select('*, client:clients(*), vehicle:vehicles(*), devis_items(*)').eq('status', 'devis_accepte').order('created_at', { ascending: false }),
       supabase.from('profiles').select('*').in('role', ['admin', 'mecanicien']).eq('active', true).eq('garage_id', profile?.garage_id ?? ''),
@@ -112,7 +114,9 @@ export default function RepairOrdersPage() {
       supabase.from('loaner_assignments').select('*, loaner_vehicle:loaner_vehicles(*), client:clients(*)').eq('status', 'active'),
       supabase.from('canned_tasks').select('*').order('name', { ascending: true }),
       supabase.from('garages').select('hourly_rate, vat_rate, vat_liable').eq('id', profile?.garage_id ?? '').maybeSingle(),
+      supabase.from('parts').select('*').eq('garage_id', profile?.garage_id ?? '').order('name', { ascending: true }),
     ]);
+    setParts(partsRes.data as Part[] ?? []);
     const orData = orRes.data as any ?? [];
     const usedSrIds = new Set(orData.map((o: any) => o.service_request_id).filter(Boolean));
     const devisData = (devisRes.data as any ?? []).filter((d: any) => !usedSrIds.has(d.id));
@@ -213,6 +217,7 @@ export default function RepairOrdersPage() {
         unit_price: it.unit_price,
         line_total: it.quantity * it.unit_price,
         item_type: it.item_type,
+        part_id: it.part_id,
       }));
       const { error: extraError } = await supabase.from('repair_order_items').insert(extraPayload);
       if (extraError) {
@@ -671,6 +676,7 @@ export default function RepairOrdersPage() {
                               quantity: task.default_labor_hours,
                               unit_price: hourlyRate,
                               item_type: 'main_oeuvre' as ItemType,
+                              part_id: null,
                             }]);
                           } else {
                             setExtraItems([...extraItems, {
@@ -678,6 +684,7 @@ export default function RepairOrdersPage() {
                               quantity: 1,
                               unit_price: task.default_price ?? 0,
                               item_type: 'piece' as ItemType,
+                              part_id: null,
                             }]);
                           }
                         }
@@ -693,6 +700,34 @@ export default function RepairOrdersPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">{t('invNew.itemDesc')}</label>
+                        <Select
+                          value="none"
+                          onValueChange={(v) => {
+                            if (v === 'custom') {
+                              setExtraItems([...extraItems, { description: '', quantity: 1, unit_price: 0, item_type: 'piece' as ItemType, part_id: null }]);
+                            } else {
+                              const part = parts.find((p) => p.id === v);
+                              if (part) {
+                                setExtraItems([...extraItems, { description: part.name, quantity: 1, unit_price: part.unit_price, item_type: 'piece' as ItemType, part_id: part.id }]);
+                              }
+                            }
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={t('invNew.selectTask')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="custom">{t('invNew.itemDesc')}</SelectItem>
+                            {parts.map((p) => (
+                              <SelectItem key={p.id} value={p.id}>
+                                {p.reference} — {p.name} ({formatCHF(p.unit_price)})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                       {extraItems.length > 0 && (
                         <div className="space-y-1">
                           {extraItems.map((it, i) => (
