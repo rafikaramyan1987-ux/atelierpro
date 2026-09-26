@@ -65,7 +65,7 @@ export default function RapportsPage() {
     });
 
     const paidInvoices = monthInvoices.filter((i) => i.status === 'payee');
-    const totalRevenue = paidInvoices.reduce((sum, i) => sum + Number(i.total), 0);
+    const totalRevenue = paidInvoices.reduce((sum, i) => sum + Number(i.subtotal), 0);
 
     const monthOrders = repairOrders.filter((ro) => {
       const d = new Date(ro.created_at);
@@ -117,9 +117,9 @@ export default function RapportsPage() {
           const id = new Date(inv.issue_date);
           return id >= s && id <= e;
         })
-        .reduce((sum, inv) => sum + Number(inv.total), 0);
+        .reduce((sum, inv) => sum + Number(inv.subtotal), 0);
       monthlyRevenue.push({
-        month: d.toLocaleDateString('fr-CH', { month: 'short' }),
+        month: d.toLocaleDateString('fr-CH', { month: 'short', year: '2-digit' }),
         revenue: Math.round(rev * 100) / 100,
       });
     }

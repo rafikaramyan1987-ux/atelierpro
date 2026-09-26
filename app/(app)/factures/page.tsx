@@ -137,7 +137,7 @@ export default function FacturesPage() {
       if (error) throw error;
 
       const allRows = (data as any[]) ?? [];
-      const rows = allRows.filter((inv) => inv.status !== 'brouillon');
+      const rows = allRows.filter((inv) => inv.status !== 'brouillon' && inv.status !== 'en_attente_validation');
 
       const headers = [
         t('export.invoiceNumber'),
@@ -160,6 +160,7 @@ export default function FacturesPage() {
           : inv.status === 'envoyee' ? t('invoices.unpaid')
           : inv.status === 'en_retard' ? t('invoices.late')
           : inv.status === 'paiement_declare' ? t('invoices.paymentDeclared')
+          : inv.status === 'partiellement_payee' ? t('invDetail.partiallyPaid')
           : inv.status === 'en_attente_validation' ? t('invoices.pendingValidation')
           : inv.status;
         const methodLabel = inv.payment_method ? (PAYMENT_METHOD_LABELS[inv.payment_method as keyof typeof PAYMENT_METHOD_LABELS] ?? inv.payment_method) : '';
@@ -245,14 +246,14 @@ export default function FacturesPage() {
   const monthStart = localDateStr(new Date(now.getFullYear(), now.getMonth(), 1));
   const monthEnd = localDateStrPlusDays(0, new Date(now.getFullYear(), now.getMonth() + 1, 0));
   const totalAmount = invoices
-    .filter((inv) => inv.status !== 'brouillon' && inv.issue_date >= monthStart && inv.issue_date <= monthEnd)
-    .reduce((sum, inv) => sum + Number(inv.total), 0);
+    .filter((inv) => inv.status !== 'brouillon' && inv.status !== 'en_attente_validation' && inv.issue_date >= monthStart && inv.issue_date <= monthEnd)
+    .reduce((sum, inv) => sum + Number(inv.subtotal), 0);
   const paidAmount = invoices
     .filter((i) => i.status === 'payee' && i.paid_date && i.paid_date >= monthStart && i.paid_date <= monthEnd)
-    .reduce((sum, inv) => sum + Number(inv.total), 0);
+    .reduce((sum, inv) => sum + Number(inv.subtotal), 0);
   const pendingAmount = invoices
-    .filter((i) => i.status === 'envoyee' || i.status === 'en_retard' || i.status === 'paiement_declare')
-    .reduce((sum, inv) => sum + Number(inv.total), 0);
+    .filter((i) => i.status === 'envoyee' || i.status === 'en_retard' || i.status === 'paiement_declare' || i.status === 'partiellement_payee')
+    .reduce((sum, inv) => sum + (Number(inv.total) - Number(inv.amount_paid ?? 0)), 0);
 
   return (
     <div className="p-6 space-y-6">
@@ -335,6 +336,7 @@ export default function FacturesPage() {
             <SelectItem value="payee">{t('invoices.paid')}</SelectItem>
             <SelectItem value="en_retard">{t('invoices.late')}</SelectItem>
             <SelectItem value="paiement_declare">{t('invoices.paymentDeclared')}</SelectItem>
+            <SelectItem value="partiellement_payee">{t('invDetail.partiallyPaid')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -384,12 +386,13 @@ export default function FacturesPage() {
                           : invoice.status === 'en_retard' ? 'destructive'
                           : invoice.status === 'envoyee' ? 'secondary'
                           : invoice.status === 'paiement_declare' ? 'outline'
+                          : invoice.status === 'partiellement_payee' ? 'secondary'
                           : invoice.status === 'en_attente_validation' ? 'outline'
                           : 'outline'
                         }
                         className="text-xs"
                       >
-                        {invoice.status === 'brouillon' ? t('invoices.draft') : invoice.status === 'envoyee' ? t('invoices.unpaid') : invoice.status === 'payee' ? t('invoices.paid') : invoice.status === 'en_retard' ? t('invoices.late') : invoice.status === 'en_attente_validation' ? t('invoices.pendingValidation') : invoice.status === 'paiement_declare' ? t('invoices.paymentDeclared') : INVOICE_STATUS_LABELS[invoice.status]}
+                        {invoice.status === 'brouillon' ? t('invoices.draft') : invoice.status === 'envoyee' ? t('invoices.unpaid') : invoice.status === 'payee' ? t('invoices.paid') : invoice.status === 'en_retard' ? t('invoices.late') : invoice.status === 'en_attente_validation' ? t('invoices.pendingValidation') : invoice.status === 'paiement_declare' ? t('invoices.paymentDeclared') : invoice.status === 'partiellement_payee' ? t('invDetail.partiallyPaid') : INVOICE_STATUS_LABELS[invoice.status]}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">

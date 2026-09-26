@@ -109,15 +109,23 @@ export default function DashboardPage() {
     const paid = allInvoices.filter((i: any) => i.status === 'payee');
     const pending = allInvoices.filter((i: any) => i.status === 'envoyee');
     const overdue = allInvoices.filter((i: any) => i.status === 'en_retard');
-    const totalRevenue = paid.reduce((sum: number, i: any) => sum + Number(i.total), 0);
+    const totalRevenue = paid.reduce((sum: number, i: any) => sum + Number(i.subtotal), 0);
     const lowStock = allParts.filter((p) => p.stock_quantity <= p.min_stock_threshold);
 
     const monthlyMap = new Map<string, number>();
     paid.forEach((inv: any) => {
-      const month = new Date(inv.issue_date).toLocaleDateString('fr-CH', { month: 'short' });
-      monthlyMap.set(month, (monthlyMap.get(month) ?? 0) + Number(inv.total));
+      const d = new Date(inv.issue_date);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      monthlyMap.set(key, (monthlyMap.get(key) ?? 0) + Number(inv.subtotal));
     });
-    const monthlyRevenue = Array.from(monthlyMap.entries()).map(([month, revenue]) => ({ month, revenue }));
+    const monthlyRevenue = Array.from(monthlyMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-6)
+      .map(([key, revenue]) => {
+        const [yr, mo] = key.split('-').map(Number);
+        const d = new Date(yr, mo - 1, 1);
+        return { month: d.toLocaleDateString('fr-CH', { month: 'short', year: '2-digit' }), revenue };
+      });
 
     const statusColors: Record<string, string> = {
       brouillon: 'hsl(var(--muted-foreground))',

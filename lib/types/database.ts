@@ -1,6 +1,6 @@
 export type UserRole = 'super_admin' | 'admin' | 'mecanicien' | 'secretaire' | 'client';
 
-export type InvoiceStatus = 'brouillon' | 'envoyee' | 'payee' | 'en_retard' | 'en_attente_validation' | 'paiement_declare';
+export type InvoiceStatus = 'brouillon' | 'envoyee' | 'payee' | 'en_retard' | 'en_attente_validation' | 'paiement_declare' | 'partiellement_payee';
 export type PaymentMethod = 'twint' | 'especes' | 'carte' | 'virement' | 'qr_bill';
 export type TwintPaymentStatus = 'en_attente' | 'confirmee' | 'echouee' | 'remboursee';
 
@@ -129,6 +129,7 @@ export interface Invoice {
   payer_type: PayerType;
   secondary_payer_type: PayerType | null;
   secondary_payer_amount: number | null;
+  amount_paid: number;
   created_at: string;
   client?: Client;
   vehicle?: Vehicle;
@@ -306,7 +307,22 @@ export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
   en_retard: 'En retard',
   en_attente_validation: 'En attente de validation',
   paiement_declare: 'Paiement déclaré',
+  partiellement_payee: 'Partiellement payée',
 };
+
+export type PaymentMethodNoQR = 'twint' | 'especes' | 'carte' | 'virement';
+
+export interface InvoicePayment {
+  id: string;
+  invoice_id: string;
+  garage_id: string;
+  amount: number;
+  method: PaymentMethodNoQR;
+  paid_at: string;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+}
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   twint: 'Twint',

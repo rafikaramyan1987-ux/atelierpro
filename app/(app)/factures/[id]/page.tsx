@@ -16,34 +16,55 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
   formatCHF,
   INVOICE_STATUS_LABELS,
   PAYMENT_METHOD_LABELS,
   type Invoice,
   type InvoiceItem,
+  type InvoicePayment,
   type Client,
   type Vehicle,
   type TwintPayment,
   type PaymentMethod,
   type InvoiceStatus,
+  type PaymentMethodNoQR,
 } from '@/lib/types/database';
-import { ArrowLeft, Download, Loader2, CreditCard, CheckCircle2, Clock, AlertTriangle, Car, User, QrCode, Smartphone, Wallet, FileText, Users } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, CreditCard, CheckCircle2, Clock, AlertTriangle, Car, User, QrCode, Smartphone, Wallet, FileText, Users, Plus, Trash2 } from 'lucide-react';
 import { generateInvoicePDF, garageToPdfInfo } from '@/lib/pdf';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
+import { useAuth } from '@/lib/auth-context';
 import type { Garage } from '@/lib/types/database';
 import { localDateStr, formatQty } from '@/lib/utils';
 
 export default function InvoiceDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { profile } = useAuth();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [client, setClient] = useState<Client | null>(null);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [twintPayments, setTwintPayments] = useState<TwintPayment[]>([]);
+  const [payments, setPayments] = useState<InvoicePayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [payAmount, setPayAmount] = useState('');
+  const [payMethod, setPayMethod] = useState<PaymentMethodNoQR>('twint');
+  const [payDate, setPayDate] = useState(localDateStr());
+  const [payNote, setPayNote] = useState('');
+  const [savingPayment, setSavingPayment] = useState(false);
   const { t } = useI18n();
 
   useEffect(() => {
@@ -63,15 +84,17 @@ export default function InvoiceDetailPage() {
 
       setInvoice(inv as Invoice);
 
-      const [clientRes, itemsRes, twintRes] = await Promise.all([
+      const [clientRes, itemsRes, twintRes, paymentsRes] = await Promise.all([
         supabase.from('clients').select('*').eq('id', inv.client_id).maybeSingle(),
         supabase.from('invoice_items').select('*').eq('invoice_id', id),
         supabase.from('twint_payments').select('*').eq('invoice_id', id).order('created_at', { ascending: false }),
+        supabase.from('invoice_payments').select('*').eq('invoice_id', id).order('paid_at', { ascending: false }),
       ]);
 
       setClient(clientRes.data as Client | null);
       setItems(itemsRes.data as InvoiceItem[] ?? []);
       setTwintPayments(twintRes.data as TwintPayment[] ?? []);
+      setPayments(paymentsRes.data as InvoicePayment[] ?? []);
 
       if (inv.vehicle_id) {
         const { data: v } = await supabase.from('vehicles').select('*').eq('id', inv.vehicle_id).maybeSingle();
@@ -83,21 +106,12 @@ export default function InvoiceDetailPage() {
     fetchInvoice();
   }, [params.id, router]);
 
-  async function updateStatus(status: InvoiceStatus) {
+  async function refreshInvoice() {
     if (!invoice) return;
-    setUpdating(true);
-    const payload: any = { status };
-    if (status === 'payee') {
-      payload.paid_date = localDateStr();
-    }
-    const { error } = await supabase.from('invoices').update(payload).eq('id', invoice.id);
-    if (error) {
-      toast.error('Erreur lors de la mise à jour');
-    } else {
-      setInvoice({ ...invoice, ...payload });
-      toast.success('Statut mis à jour');
-    }
-    setUpdating(false);
+    const { data: inv } = await supabase.from('invoices').select('*').eq('id', invoice.id).maybeSingle();
+    if (inv) setInvoice(inv as Invoice);
+    const { data: pays } = await supabase.from('invoice_payments').select('*').eq('invoice_id', invoice.id).order('paid_at', { ascending: false });
+    setPayments(pays as InvoicePayment[] ?? []);
   }
 
   async function updatePaymentMethod(method: PaymentMethod) {
@@ -126,8 +140,48 @@ export default function InvoiceDetailPage() {
     }
   }
 
+  const canManagePayments = profile?.role === 'admin' || profile?.role === 'secretaire';
+  const remaining = invoice ? Number(invoice.total) - Number(invoice.amount_paid ?? 0) : 0;
+
+  async function recordPayment(amount: number, method: PaymentMethodNoQR, date: string, note: string) {
+    if (!invoice) return;
+    setSavingPayment(true);
+    const { error } = await supabase.from('invoice_payments').insert({
+      invoice_id: invoice.id,
+      garage_id: invoice.garage_id,
+      amount,
+      method,
+      paid_at: date,
+      note: note || null,
+      created_by: profile?.id ?? null,
+    });
+    if (error) {
+      toast.error(t('toast.error'), { description: error.message });
+    } else {
+      toast.success(t('invDetail.paymentSaved'));
+      setShowPaymentDialog(false);
+      setPayAmount('');
+      setPayNote('');
+      await refreshInvoice();
+    }
+    setSavingPayment(false);
+  }
+
   async function markAsPaid() {
-    await updateStatus('payee');
+    if (!invoice || remaining <= 0) return;
+    setUpdating(true);
+    await recordPayment(remaining, 'twint', localDateStr(), '');
+    setUpdating(false);
+  }
+
+  async function deletePayment(id: string) {
+    const { error } = await supabase.from('invoice_payments').delete().eq('id', id);
+    if (error) {
+      toast.error(t('toast.error'), { description: error.message });
+    } else {
+      toast.success(t('invDetail.paymentDeleted'));
+      await refreshInvoice();
+    }
   }
 
   if (loading || !invoice) {
@@ -145,8 +199,20 @@ export default function InvoiceDetailPage() {
     en_retard: { icon: AlertTriangle, color: 'text-destructive', bg: 'bg-destructive/10' },
     en_attente_validation: { icon: Clock, color: 'text-warning', bg: 'bg-warning/10' },
     paiement_declare: { icon: Clock, color: 'text-warning', bg: 'bg-warning/10' },
+    partiellement_payee: { icon: Clock, color: 'text-warning', bg: 'bg-warning/10' },
   };
   const StatusIcon = statusConfig[invoice.status].icon;
+
+  const statusLabel = (s: InvoiceStatus) => {
+    if (s === 'brouillon') return t('invoices.draft');
+    if (s === 'envoyee') return t('invoices.unpaid');
+    if (s === 'payee') return t('invoices.paid');
+    if (s === 'en_retard') return t('invoices.late');
+    if (s === 'paiement_declare') return t('invoices.paymentDeclared');
+    if (s === 'partiellement_payee') return t('invDetail.partiallyPaid');
+    if (s === 'en_attente_validation') return t('invoices.pendingValidation');
+    return INVOICE_STATUS_LABELS[s];
+  };
 
   const paymentMethods: { value: PaymentMethod; label: string; icon: any; desc: string }[] = [
     { value: 'qr_bill', label: t('invoices.qrBill'), icon: QrCode, desc: t('invDetail.qrDesc2') },
@@ -155,6 +221,14 @@ export default function InvoiceDetailPage() {
     { value: 'virement', label: t('invDetail.transfer'), icon: Wallet, desc: t('invDetail.transferDesc') },
     { value: 'especes', label: t('invDetail.cash'), icon: Wallet, desc: t('invDetail.cashDesc') },
   ];
+
+  const methodLabel = (m: PaymentMethodNoQR) => {
+    if (m === 'twint') return t('invoices.twint');
+    if (m === 'especes') return t('invDetail.cash');
+    if (m === 'carte') return t('invoices.card');
+    if (m === 'virement') return t('invDetail.transfer');
+    return m;
+  };
 
   return (
     <div className="p-6 space-y-6 max-w-5xl">
@@ -172,15 +246,15 @@ export default function InvoiceDetailPage() {
       <div className={`flex items-center gap-3 rounded-lg p-4 ${statusConfig[invoice.status].bg}`}>
         <StatusIcon className={`h-5 w-5 ${statusConfig[invoice.status].color}`} />
         <div className="flex-1">
-          <p className="text-sm font-medium">{invoice.status === 'brouillon' ? t('invoices.draft') : invoice.status === 'envoyee' ? t('invoices.unpaid') : invoice.status === 'payee' ? t('invoices.paid') : invoice.status === 'en_retard' ? t('invoices.late') : invoice.status === 'paiement_declare' ? t('invoices.paymentDeclared') : INVOICE_STATUS_LABELS[invoice.status]}</p>
+          <p className="text-sm font-medium">{statusLabel(invoice.status)}</p>
           <p className="text-xs text-muted-foreground">
             {invoice.status === 'payee' && invoice.paid_date
               ? `${t('invoices.paid')} ${new Date(invoice.paid_date).toLocaleDateString('fr-CH')}`
               : `${t('invoices.dueDate')}: ${new Date(invoice.due_date).toLocaleDateString('fr-CH')}`}
           </p>
         </div>
-        {invoice.status !== 'payee' && invoice.status !== 'paiement_declare' && (
-          <Button size="sm" onClick={markAsPaid} disabled={updating}>
+        {invoice.status !== 'payee' && invoice.status !== 'paiement_declare' && canManagePayments && (
+          <Button size="sm" onClick={markAsPaid} disabled={updating || remaining <= 0}>
             <CheckCircle2 className="h-4 w-4 mr-1" />
             {t('invoices.paid')}
           </Button>
@@ -266,6 +340,61 @@ export default function InvoiceDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Payments panel */}
+      <Card className="border-border/60">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+            {t('invDetail.payments')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {payments.length > 0 ? (
+            <div className="space-y-2">
+              {payments.map((p) => (
+                <div key={p.id} className="flex items-center justify-between rounded-lg border border-border/40 p-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{formatCHF(Number(p.amount))}</span>
+                      <Badge variant="secondary" className="text-xs">{methodLabel(p.method)}</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {new Date(p.paid_at).toLocaleDateString('fr-CH')}
+                      {p.note && ` — ${p.note}`}
+                    </p>
+                  </div>
+                  {canManagePayments && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => deletePayment(p.id)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t('invDetail.noPayments')}</p>
+          )}
+
+          <Separator />
+
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">{t('invDetail.paidAmount')}</span>
+            <span className="font-medium text-success">{formatCHF(Number(invoice.amount_paid ?? 0))}</span>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">{t('invDetail.remainingAmount')}</span>
+            <span className="font-bold text-primary">{formatCHF(remaining)}</span>
+          </div>
+
+          {canManagePayments && (
+            <Button className="w-full" onClick={() => { setPayAmount(remaining > 0 ? remaining.toFixed(2) : ''); setShowPaymentDialog(true); }}>
+              <Plus className="h-4 w-4 mr-2" />
+              {t('invDetail.recordPayment')}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Payment methods overview */}
       <Card className="border-border/60">
@@ -380,6 +509,15 @@ export default function InvoiceDetailPage() {
               <span className="font-bold">{t('invoices.total')}</span>
               <span className="font-bold text-primary">{formatCHF(Number(invoice.total))}</span>
             </div>
+            <Separator />
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">{t('invDetail.paidAmount')}</span>
+              <span className="font-medium text-success">{formatCHF(Number(invoice.amount_paid ?? 0))}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">{t('invDetail.remainingAmount')}</span>
+              <span className="font-bold text-primary">{formatCHF(remaining)}</span>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -471,6 +609,59 @@ export default function InvoiceDetailPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Record payment dialog */}
+      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('invDetail.recordPayment')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1">
+              <Label>{t('invDetail.paymentAmount')}</Label>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="Ex. : 250.00"
+                value={payAmount}
+                onChange={(e) => setPayAmount(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>{t('invDetail.payMethod')}</Label>
+              <Select value={payMethod} onValueChange={(v) => setPayMethod(v as PaymentMethodNoQR)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="twint">{t('invoices.twint')}</SelectItem>
+                  <SelectItem value="especes">{t('invDetail.cash')}</SelectItem>
+                  <SelectItem value="carte">{t('invoices.card')}</SelectItem>
+                  <SelectItem value="virement">{t('invDetail.transfer')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>{t('invDetail.paymentDate')}</Label>
+              <Input type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label>{t('invDetail.paymentNote')}</Label>
+              <Textarea value={payNote} onChange={(e) => setPayNote(e.target.value)} rows={2} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>{t('common.cancel')}</Button>
+            <Button
+              disabled={savingPayment || !payAmount || Number(payAmount) <= 0}
+              onClick={() => recordPayment(Number(payAmount), payMethod, payDate, payNote)}
+            >
+              {savingPayment && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {t('common.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
