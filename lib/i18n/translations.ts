@@ -1248,6 +1248,7 @@ export const translations: Record<Locale, TranslationDict> = {
 
     // ── Labour & item types ──
     'items.piece': 'Pièce',
+    'items.parts': 'Pièces',
     'items.labor': 'Main d\'œuvre',
     'items.hours': 'Heures',
     'items.hourlyRate': 'Taux horaire',
@@ -2446,6 +2447,7 @@ export const translations: Record<Locale, TranslationDict> = {
 
     // ── Labour & item types ──
     'items.piece': 'Teil',
+    'items.parts': 'Teile',
     'items.labor': 'Arbeitszeit',
     'items.hours': 'Stunden',
     'items.hourlyRate': 'Stundensatz',
@@ -3644,6 +3646,7 @@ export const translations: Record<Locale, TranslationDict> = {
 
     // ── Labour & item types ──
     'items.piece': 'Ricambio',
+    'items.parts': 'Pezzi',
     'items.labor': 'Manodopera',
     'items.hours': 'Ore',
     'items.hourlyRate': 'Tariffa oraria',
@@ -4842,6 +4845,7 @@ export const translations: Record<Locale, TranslationDict> = {
 
     // ── Labour & item types ──
     'items.piece': 'Part',
+    'items.parts': 'Parts',
     'items.labor': 'Labour',
     'items.hours': 'Hours',
     'items.hourlyRate': 'Hourly rate',
@@ -6040,6 +6044,7 @@ export const translations: Record<Locale, TranslationDict> = {
 
     // ── Labour & item types ──
     'items.piece': 'Pjesë',
+    'items.parts': 'Pjesë',
     'items.labor': 'Punë dore',
     'items.hours': 'Orë',
     'items.hourlyRate': 'Tarifa orare',
