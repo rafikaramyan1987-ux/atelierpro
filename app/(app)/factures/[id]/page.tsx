@@ -169,9 +169,11 @@ export default function InvoiceDetailPage() {
 
   async function markAsPaid() {
     if (!invoice || remaining <= 0) return;
-    setUpdating(true);
-    await recordPayment(remaining, 'twint', localDateStr(), '');
-    setUpdating(false);
+    setPayAmount(remaining.toFixed(2));
+    setPayMethod('twint');
+    setPayDate(localDateStr());
+    setPayNote('');
+    setShowPaymentDialog(true);
   }
 
   async function deletePayment(id: string) {

@@ -139,7 +139,7 @@ export default function ClientInvoicesPage() {
   }
 
   const totalPaid = invoices.filter((i) => i.status === 'payee').reduce((sum, i) => sum + Number(i.total), 0);
-  const totalPending = invoices.filter((i) => i.status === 'envoyee' || i.status === 'en_retard' || i.status === 'paiement_declare').reduce((sum, i) => sum + Number(i.total), 0);
+  const totalPending = invoices.filter((i) => i.status === 'envoyee' || i.status === 'en_retard' || i.status === 'paiement_declare' || i.status === 'partiellement_payee').reduce((sum, i) => sum + Number(i.total) - Number(i.amount_paid ?? 0), 0);
 
   const paymentOptions: { method: PaymentMethod; label: string; icon: any; desc: string }[] = [
     { method: 'qr_bill', label: t('invoices.qrBill'), icon: QrCode, desc: t('invoices.qrBillDesc') },
@@ -198,10 +198,10 @@ export default function ClientInvoicesPage() {
                     <TableCell className="text-right font-bold">{formatCHF(Number(inv.total))}</TableCell>
                     <TableCell>
                       <Badge
-                        variant={inv.status === 'payee' ? 'default' : inv.status === 'en_retard' ? 'destructive' : 'secondary'}
+                        variant={inv.status === 'payee' ? 'default' : inv.status === 'en_retard' ? 'destructive' : inv.status === 'partiellement_payee' ? 'secondary' : 'secondary'}
                         className="text-xs"
                       >
-                        {inv.status === 'payee' ? t('invoices.paid') : inv.status === 'envoyee' ? t('invoices.unpaid') : inv.status === 'en_retard' ? t('invoices.late') : inv.status === 'paiement_declare' ? t('invoices.paymentDeclared') : t('invoices.draft')}
+                        {inv.status === 'payee' ? t('invoices.paid') : inv.status === 'envoyee' ? t('invoices.unpaid') : inv.status === 'en_retard' ? t('invoices.late') : inv.status === 'paiement_declare' ? t('invoices.paymentDeclared') : inv.status === 'partiellement_payee' ? t('invDetail.partiallyPaid') : t('invoices.draft')}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
@@ -230,10 +230,10 @@ export default function ClientInvoicesPage() {
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-mono text-xs font-medium">{inv.invoice_number}</span>
                     <Badge
-                      variant={inv.status === 'payee' ? 'default' : inv.status === 'en_retard' ? 'destructive' : 'secondary'}
+                      variant={inv.status === 'payee' ? 'default' : inv.status === 'en_retard' ? 'destructive' : inv.status === 'partiellement_payee' ? 'secondary' : 'secondary'}
                       className="text-xs"
                     >
-                      {inv.status === 'payee' ? t('invoices.paid') : inv.status === 'envoyee' ? t('invoices.unpaid') : inv.status === 'en_retard' ? t('invoices.late') : inv.status === 'paiement_declare' ? t('invoices.paymentDeclared') : t('invoices.draft')}
+                      {inv.status === 'payee' ? t('invoices.paid') : inv.status === 'envoyee' ? t('invoices.unpaid') : inv.status === 'en_retard' ? t('invoices.late') : inv.status === 'paiement_declare' ? t('invoices.paymentDeclared') : inv.status === 'partiellement_payee' ? t('invDetail.partiallyPaid') : t('invoices.draft')}
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">{new Date(inv.issue_date).toLocaleDateString('fr-CH')}</p>
@@ -284,8 +284,8 @@ export default function ClientInvoicesPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">{t('invoices.status')}</p>
-                  <Badge variant={detailInvoice.status === 'payee' ? 'default' : detailInvoice.status === 'en_retard' ? 'destructive' : 'secondary'}>
-                    {detailInvoice.status === 'payee' ? t('invoices.paid') : detailInvoice.status === 'en_retard' ? t('invoices.late') : detailInvoice.status === 'envoyee' ? t('invoices.unpaid') : t('invoices.draft')}
+                  <Badge variant={detailInvoice.status === 'payee' ? 'default' : detailInvoice.status === 'en_retard' ? 'destructive' : detailInvoice.status === 'partiellement_payee' ? 'secondary' : 'secondary'}>
+                    {detailInvoice.status === 'payee' ? t('invoices.paid') : detailInvoice.status === 'en_retard' ? t('invoices.late') : detailInvoice.status === 'envoyee' ? t('invoices.unpaid') : detailInvoice.status === 'partiellement_payee' ? t('invDetail.partiallyPaid') : detailInvoice.status === 'paiement_declare' ? t('invoices.paymentDeclared') : t('invoices.draft')}
                   </Badge>
                 </div>
               </div>
@@ -355,6 +355,19 @@ export default function ClientInvoicesPage() {
                   <span className="font-bold">{t('invoices.total')}</span>
                   <span className="font-bold text-primary">{formatCHF(Number(detailInvoice.total))}</span>
                 </div>
+                {Number(detailInvoice.amount_paid ?? 0) > 0 && (
+                  <>
+                    <Separator />
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{t('invDetail.paidAmount')}</span>
+                      <span className="font-medium text-success">{formatCHF(Number(detailInvoice.amount_paid ?? 0))}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{t('invDetail.remainingAmount')}</span>
+                      <span className="font-bold text-primary">{formatCHF(Number(detailInvoice.total) - Number(detailInvoice.amount_paid ?? 0))}</span>
+                    </div>
+                  </>
+                )}
               </div>
 
               {detailInvoice.payment_method && detailInvoice.status === 'payee' && (

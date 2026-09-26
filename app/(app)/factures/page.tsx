@@ -106,10 +106,16 @@ export default function FacturesPage() {
   }
 
   async function handleConfirmPayment(invoice: Invoice) {
-    const { error } = await supabase.from('invoices').update({
-      status: 'payee',
-      paid_date: localDateStr(),
-    }).eq('id', invoice.id);
+    const remaining = Number(invoice.total) - Number(invoice.amount_paid ?? 0);
+    if (remaining <= 0) return;
+    const method = invoice.payment_method ?? 'virement';
+    const { error } = await supabase.from('invoice_payments').insert({
+      invoice_id: invoice.id,
+      garage_id: invoice.garage_id,
+      amount: remaining,
+      method,
+      paid_at: localDateStr(),
+    });
     if (error) {
       toast.error(t('toast.error'), { description: error.message });
     } else {
