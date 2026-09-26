@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Deferred client registration: if the user signed up as a client
     // (user_metadata.account_type === 'client') but the profile is still
     // mecanicien with no garage_id and no client_id, call register_client.
-    if (data && data.role === 'mecanicien' && !data.garage_id && !data.client_id) {
+    if (data && (data.role === 'client' || data.role === 'mecanicien') && !data.garage_id && !data.client_id) {
       const { data: userData } = await supabase.auth.getUser();
       const meta = userData.user?.user_metadata as Record<string, string> | undefined;
       if (meta?.account_type === 'client') {
