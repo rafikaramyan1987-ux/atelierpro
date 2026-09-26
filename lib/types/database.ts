@@ -99,6 +99,7 @@ export interface Part {
   description: string | null;
   category: string | null;
   unit_price: number;
+  purchase_price: number;
   stock_quantity: number;
   min_stock_threshold: number;
   supplier: string | null;
@@ -260,6 +261,7 @@ export interface PartsOrder {
   garage_id: string | null;
   part_name: string;
   part_reference: string | null;
+  part_id: string | null;
   quantity: number;
   urgency: PartsOrderUrgency;
   status: PartsOrderStatus;
@@ -395,6 +397,7 @@ export interface RepairOrderItem {
   unit_price: number;
   line_total: number;
   item_type: ItemType;
+  part_id: string | null;
   created_at: string;
 }
 

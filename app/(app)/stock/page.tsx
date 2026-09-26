@@ -36,6 +36,7 @@ import { formatCHF, type Part } from '@/lib/types/database';
 import { Plus, Search, Pencil, Trash2, Package, AlertTriangle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
+import { FieldHint } from '@/components/ui/field-hint';
 
 export default function StockPage() {
   const [parts, setParts] = useState<Part[]>([]);
@@ -55,6 +56,7 @@ export default function StockPage() {
     description: '',
     category: 'Pièces moteur',
     unit_price: '',
+    purchase_price: '',
     stock_quantity: '',
     min_stock_threshold: '5',
     supplier: '',
@@ -90,6 +92,7 @@ export default function StockPage() {
       description: '',
       category: 'Pièces moteur',
       unit_price: '',
+      purchase_price: '',
       stock_quantity: '',
       min_stock_threshold: '5',
       supplier: '',
@@ -106,6 +109,7 @@ export default function StockPage() {
       description: part.description ?? '',
       category: part.category ?? 'Pièces moteur',
       unit_price: part.unit_price.toString(),
+      purchase_price: (part as any).purchase_price?.toString() ?? '',
       stock_quantity: part.stock_quantity.toString(),
       min_stock_threshold: part.min_stock_threshold.toString(),
       supplier: part.supplier ?? '',
@@ -124,6 +128,7 @@ export default function StockPage() {
       description: form.description || null,
       category: form.category,
       unit_price: parseFloat(form.unit_price) || 0,
+      purchase_price: parseFloat(form.purchase_price) || 0,
       stock_quantity: parseInt(form.stock_quantity) || 0,
       min_stock_threshold: parseInt(form.min_stock_threshold) || 5,
       supplier: form.supplier || null,
@@ -167,7 +172,7 @@ export default function StockPage() {
     return true;
   });
 
-  const totalValue = parts.reduce((sum, p) => sum + p.unit_price * p.stock_quantity, 0);
+  const totalValue = parts.reduce((sum, p) => sum + ((p as any).purchase_price > 0 ? (p as any).purchase_price : p.unit_price) * p.stock_quantity, 0);
   const lowStockCount = parts.filter((p) => p.stock_quantity <= p.min_stock_threshold).length;
 
   return (
@@ -395,6 +400,19 @@ export default function StockPage() {
                   onChange={(e) => setForm({ ...form, unit_price: e.target.value })}
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="purchase_price">{t('stock.purchasePrice')}</Label>
+              <Input
+                id="purchase_price"
+                type="number"
+                step="0.05"
+                placeholder={t('ph.purchasePrice')}
+                value={form.purchase_price}
+                onChange={(e) => setForm({ ...form, purchase_price: e.target.value })}
+              />
+              <FieldHint>{t('hint.purchasePrice')}</FieldHint>
             </div>
 
             <div className="grid grid-cols-3 gap-4">

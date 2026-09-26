@@ -192,6 +192,7 @@ export default function RepairOrdersPage() {
       unit_price: item.unit_price,
       line_total: item.line_total,
       item_type: item.item_type ?? 'piece',
+      part_id: item.part_id ?? null,
     }));
 
     if (items.length > 0) {
@@ -351,6 +352,7 @@ export default function RepairOrdersPage() {
       const itemPayload = items.map((it) => ({
         invoice_id: invoice.id,
         garage_id: profile?.garage_id ?? null,
+        part_id: (it as any).part_id ?? null,
         description: it.description,
         quantity: it.quantity,
         unit_price: it.unit_price,

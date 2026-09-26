@@ -14,6 +14,14 @@ import { type PartsOrder, type PartsOrderStatus, type PartsOrderUrgency, type Pa
 import { Package, Search, Loader2, Plus, Clock, CheckCircle2, Truck, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { FieldHint } from '@/components/ui/field-hint';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const URGENCY_COLORS: Record<PartsOrderUrgency, string> = {
   normal: 'bg-secondary text-muted-foreground',
@@ -45,6 +53,7 @@ export default function CommandesPiecesPage() {
 
   const [partName, setPartName] = useState('');
   const [partReference, setPartReference] = useState('');
+  const [partId, setPartId] = useState<string | null>(null);
   const [quantity, setQuantity] = useState('1');
   const [urgency, setUrgency] = useState<PartsOrderUrgency>('normal');
   const [notes, setNotes] = useState('');
@@ -73,6 +82,7 @@ export default function CommandesPiecesPage() {
         garage_id: profile?.garage_id ?? null,
         part_name: partName.trim(),
         part_reference: partReference.trim() || null,
+        part_id: partId,
         quantity: parseInt(quantity) || 1,
         urgency,
         notes: notes.trim() || null,
@@ -88,6 +98,7 @@ export default function CommandesPiecesPage() {
       setOrders([data as PartsOrder, ...orders]);
       setPartName('');
       setPartReference('');
+      setPartId(null);
       setQuantity('1');
       setUrgency('normal');
       setNotes('');
@@ -108,6 +119,7 @@ export default function CommandesPiecesPage() {
   function orderFromStock(part: Part) {
     setPartName(part.name);
     setPartReference(part.reference);
+    setPartId(part.id);
     setQuantity('1');
   }
 
@@ -141,6 +153,36 @@ export default function CommandesPiecesPage() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">{t('partsOrders.linkStockPart')}</label>
+                  <Select
+                    value={partId ?? 'none'}
+                    onValueChange={(v) => {
+                      if (v === 'none') {
+                        setPartId(null);
+                      } else {
+                        const part = parts.find((p) => p.id === v);
+                        if (part) {
+                          setPartId(part.id);
+                          setPartName(part.name);
+                          setPartReference(part.reference);
+                        }
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={t('partsOrders.selectStockPart')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">{t('partsOrders.noStockPart')}</SelectItem>
+                      {parts.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.reference} — {p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldHint>{t('partsOrders.linkStockHint')}</FieldHint>
+                </div>
+
                 <div className="space-y-2">
                   <label className="text-sm font-medium">{t('partsOrders.partName')} *</label>
                   <Input value={partName} onChange={(e) => setPartName(e.target.value)} placeholder={t('ph.partName')} required />
