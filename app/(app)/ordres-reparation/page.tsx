@@ -98,6 +98,7 @@ export default function RepairOrdersPage() {
   const [hourlyRate, setHourlyRate] = useState(120);
   const [vatRate, setVatRate] = useState(8.1);
   const [vatLiable, setVatLiable] = useState(true);
+  const effectiveVatRate = vatLiable ? vatRate : 0;
   const [extraItems, setExtraItems] = useState<{ description: string; quantity: number; unit_price: number; item_type: ItemType }[]>([]);
   const [devisItems, setDevisItems] = useState<DevisItem[]>([]);
 
@@ -313,7 +314,6 @@ export default function RepairOrdersPage() {
 
     const items = convertDialog.repair_order_items ?? [];
     const subtotal = items.reduce((sum, it) => sum + it.line_total, 0);
-    const effectiveVatRate = vatLiable ? vatRate : 0;
     const { vat, total } = calculateVAT(subtotal, effectiveVatRate);
 
     const { data: invoiceNumber } = await supabase.rpc('generate_invoice_number', {
@@ -808,17 +808,19 @@ export default function RepairOrdersPage() {
                 ))}
                 {(() => {
                   const sub = convertDialog.repair_order_items.reduce((s, it) => s + it.line_total, 0);
-                  const { vat, total } = calculateVAT(sub);
+                  const { vat, total } = calculateVAT(sub, effectiveVatRate);
                   return (
                     <>
                       <div className="flex justify-between text-sm pt-1 border-t">
                         <span className="text-muted-foreground">{t('invoices.subtotal')}</span>
                         <span>{formatCHF(sub)}</span>
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">{t('invoices.vat')} ({VAT_RATE}%)</span>
-                        <span>{formatCHF(vat)}</span>
-                      </div>
+                      {effectiveVatRate > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">{t('invoices.vat')} ({effectiveVatRate}%)</span>
+                          <span>{formatCHF(vat)}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between text-sm font-bold pt-1 border-t">
                         <span>{t('invoices.total')}</span>
                         <span className="text-primary">{formatCHF(total)}</span>
